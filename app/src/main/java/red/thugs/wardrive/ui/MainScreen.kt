@@ -37,7 +37,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,15 +47,42 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import red.thugs.wardrive.R
 import red.thugs.wardrive.data.Observation
 import red.thugs.wardrive.data.RadioKind
+import red.thugs.wardrive.data.SessionCounts
+import red.thugs.wardrive.data.TrackPoint
 import red.thugs.wardrive.net.LiveState
+import red.thugs.wardrive.net.LiveStatus
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+
+/** Everything [WardriveScaffold] needs to draw, with no ViewModel dependency (so it renders in previews/screenshot tests). */
+data class WardriveUiState(
+    val screen: Screen = Screen.LIST,
+    val observations: List<Observation> = emptyList(),
+    val counts: SessionCounts = SessionCounts(),
+    val scanning: Boolean = false,
+    val powerSaving: Boolean = false,
+    val live: LiveStatus = LiveStatus(),
+    val track: List<TrackPoint> = emptyList(),
+    val current: Pair<Double, Double>? = null,
+)
+
+/** Callbacks the chrome fires. Default no-ops keep previews trivial. */
+data class WardriveActions(
+    val onGoLive: () -> Unit = {},
+    val onUpload: () -> Unit = {},
+    val onAbout: () -> Unit = {},
+    val onList: () -> Unit = {},
+    val onMap: () -> Unit = {},
+    val onSavedSessions: () -> Unit = {},
+    val onExport: () -> Unit = {},
+    val onStopLive: () -> Unit = {},
+    val onToggleScan: () -> Unit = {},
+)
 
 @Composable
 fun MainScreen(
@@ -64,7 +90,6 @@ fun MainScreen(
     onRequestScanStart: () -> Unit,
 ) {
     val snackbar = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
 
     var screen by remember { mutableStateOf(Screen.LIST) }
     var credPurpose by remember { mutableStateOf<CredentialPurpose?>(null) }
@@ -84,72 +109,45 @@ fun MainScreen(
         vm.events.collect { snackbar.showSnackbar(it) }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbar) },
-        topBar = {
-            TopBanner(
+    Box(Modifier.fillMaxSize()) {
+        WardriveScaffold(
+            state = WardriveUiState(
+                screen = screen,
+                observations = observations,
+                counts = counts,
+                scanning = scanning,
+                powerSaving = powerSaving,
+                live = live,
+                track = track,
+                current = currentLatLon,
+            ),
+            actions = WardriveActions(
                 onGoLive = { credPurpose = CredentialPurpose.GO_LIVE },
                 onUpload = { pendingUploadFile = null; credPurpose = CredentialPurpose.UPLOAD },
                 onAbout = { screen = Screen.ABOUT },
                 onList = { screen = Screen.LIST },
+                onMap = { screen = Screen.MAP },
                 onSavedSessions = { showSaved = true },
                 onExport = { vm.exportOnly() },
                 onStopLive = { vm.stopLive() },
-                onMap = { screen = Screen.MAP },
-                liveActive = live.state != LiveState.OFF,
-            )
-        },
-        bottomBar = {
-            SessionFooter(
-                counts.wifiAp, counts.btClassic, counts.btLe, counts.withFix, observations.size,
-                powerSaving = scanning && powerSaving,
-            )
-        },
-        floatingActionButton = {
-            if (screen != Screen.ABOUT) {
-                ExtendedFloatingActionButton(
-                    onClick = { if (scanning) vm.stopScan() else onRequestScanStart() },
-                    icon = {
-                        Icon(if (scanning) AppIcons.Stop else Icons.Filled.PlayArrow, null)
-                    },
-                    text = { Text(if (scanning) "Stop" else "Start scan") },
-                )
-            }
-        },
-    ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            when (screen) {
-                Screen.ABOUT -> AboutScreen()
-                Screen.MAP -> Column(Modifier.fillMaxSize()) {
-                    LiveStrip(live)
-                    MapScreen(points = observations, track = track, current = currentLatLon)
-                }
-                Screen.LIST -> Column(Modifier.fillMaxSize()) {
-                    LiveStrip(live)
-                    if (observations.isEmpty()) {
-                        EmptyState(scanning)
-                    } else {
-                        LazyColumn(Modifier.fillMaxSize()) {
-                            items(observations, key = { it.kind.name + it.bssid }) { ObservationRow(it) }
-                        }
-                    }
-                }
-            }
+                onToggleScan = { if (scanning) vm.stopScan() else onRequestScanStart() },
+            ),
+            snackbarHost = { SnackbarHost(snackbar) },
+        )
 
-            if (busy is Busy.Working) {
-                Surface(
-                    color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                    modifier = Modifier.fillMaxSize(),
+        if (busy is Busy.Working) {
+            Surface(
+                color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Column(
+                    Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Column(
-                        Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        CircularProgressIndicator()
-                        Spacer(Modifier.height(12.dp))
-                        Text((busy as Busy.Working).what, color = MaterialTheme.colorScheme.onSurface)
-                    }
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(12.dp))
+                    Text((busy as Busy.Working).what, color = MaterialTheme.colorScheme.onSurface)
                 }
             }
         }
@@ -185,6 +183,67 @@ fun MainScreen(
     }
 }
 
+/** The banner + footer + FAB chrome and the current screen. Stateless. */
+@Composable
+internal fun WardriveScaffold(
+    state: WardriveUiState,
+    actions: WardriveActions,
+    snackbarHost: @Composable () -> Unit = {},
+) {
+    Scaffold(
+        snackbarHost = snackbarHost,
+        topBar = {
+            TopBanner(
+                onGoLive = actions.onGoLive,
+                onUpload = actions.onUpload,
+                onAbout = actions.onAbout,
+                onList = actions.onList,
+                onSavedSessions = actions.onSavedSessions,
+                onExport = actions.onExport,
+                onStopLive = actions.onStopLive,
+                onMap = actions.onMap,
+                liveActive = state.live.state != LiveState.OFF,
+            )
+        },
+        bottomBar = {
+            SessionFooter(
+                state.counts.wifiAp, state.counts.btClassic, state.counts.btLe,
+                state.counts.withFix, state.observations.size,
+                powerSaving = state.scanning && state.powerSaving,
+            )
+        },
+        floatingActionButton = {
+            if (state.screen != Screen.ABOUT) {
+                ExtendedFloatingActionButton(
+                    onClick = actions.onToggleScan,
+                    icon = { Icon(if (state.scanning) AppIcons.Stop else Icons.Filled.PlayArrow, null) },
+                    text = { Text(if (state.scanning) "Stop" else "Start scan") },
+                )
+            }
+        },
+    ) { pad ->
+        Box(Modifier.padding(pad).fillMaxSize()) {
+            when (state.screen) {
+                Screen.ABOUT -> AboutScreen()
+                Screen.MAP -> Column(Modifier.fillMaxSize()) {
+                    LiveStrip(state.live)
+                    MapScreen(points = state.observations, track = state.track, current = state.current)
+                }
+                Screen.LIST -> Column(Modifier.fillMaxSize()) {
+                    LiveStrip(state.live)
+                    if (state.observations.isEmpty()) {
+                        EmptyState(state.scanning)
+                    } else {
+                        LazyColumn(Modifier.fillMaxSize()) {
+                            items(state.observations, key = { it.kind.name + it.bssid }) { ObservationRow(it) }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun EmptyState(scanning: Boolean) {
     Column(
@@ -208,7 +267,7 @@ private fun EmptyState(scanning: Boolean) {
 }
 
 @Composable
-private fun LiveStrip(live: red.thugs.wardrive.net.LiveStatus) {
+private fun LiveStrip(live: LiveStatus) {
     if (live.state == LiveState.OFF) return
     val color = when (live.state) {
         LiveState.LIVE -> MaterialTheme.colorScheme.primary

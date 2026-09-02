@@ -43,6 +43,7 @@ Play Store.
 | [Deploy on macOS](Deploy-macOS.md) | Install the APK from a Mac (ADB or file transfer) |
 | [Deploy on Linux](Deploy-Linux.md) | Install the APK from Linux (ADB or file transfer) |
 | [Deploy on Windows](Deploy-Windows.md) | Install the APK from Windows (ADB or file transfer) |
+| [Screenshots](screenshots/) | Rendered from the real UI (Robolectric + Roborazzi); how to regenerate |
 
 ## The Wardrive project
 

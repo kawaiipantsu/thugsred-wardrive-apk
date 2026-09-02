@@ -15,6 +15,7 @@ import androidx.core.view.WindowCompat
 
 private val Green = Color(0xFF3DDC97)
 private val GreenDim = Color(0xFF2FB37E)
+private val Amber = Color(0xFFE8B84B) // Bluetooth Classic — distinct from WiFi green and BLE red
 private val Red = Color(0xFFE64B5D)
 private val Ink = Color(0xFF0B0E14)
 private val Panel = Color(0xFF141925)
@@ -23,7 +24,7 @@ private val PanelHi = Color(0xFF1E2534)
 private val DarkColors = darkColorScheme(
     primary = Green,
     onPrimary = Ink,
-    secondary = GreenDim,
+    secondary = Amber,
     onSecondary = Ink,
     tertiary = Red,
     onTertiary = Color.White,
@@ -51,10 +52,12 @@ fun WardriveTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            window.statusBarColor = colors.background.toArgb()
-            window.navigationBarColor = colors.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            // Null when rendered outside an Activity (screenshot tests, previews).
+            (view.context as? Activity)?.window?.let { window ->
+                window.statusBarColor = colors.background.toArgb()
+                window.navigationBarColor = colors.background.toArgb()
+                WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            }
         }
     }
     MaterialTheme(colorScheme = colors, typography = Typography(), content = content)

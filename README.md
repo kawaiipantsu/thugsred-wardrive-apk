@@ -27,6 +27,7 @@
 ## 📑 Table of Contents
 
 - [⚠️ Account required](#️-account-required)
+- [📸 Screenshots](#-screenshots)
 - [✨ Features](#-features)
 - [📲 Install](#-install)
 - [🕹️ Using it](#️-using-it)
@@ -45,6 +46,19 @@
 3. **Tell THUGS(red) staff on Discord** that you've registered and want wardrive access, so they can approve the account.
 
 Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning, the live list, the map, the counters and local CSV export all work — Go Live and Upload fail at sign-in.
+
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td width="25%"><img src="docs/screenshots/list.png" alt="Live session list"><br/><sub><b>Live list</b> — one row per device, footer counts</sub></td>
+    <td width="25%"><img src="docs/screenshots/map.png" alt="Offline map"><br/><sub><b>Map</b> — points + driving path, no tiles</sub></td>
+    <td width="25%"><img src="docs/screenshots/list_empty.png" alt="Scanning, no results yet"><br/><sub><b>Scanning</b> — waiting for a GPS fix</sub></td>
+    <td width="25%"><img src="docs/screenshots/about.png" alt="About screen"><br/><sub><b>About</b> — project + optimise checklist</sub></td>
+  </tr>
+</table>
+
+<sub>Rendered from the real Compose UI on the JVM (Robolectric + Roborazzi) with sample data — `./gradlew :app:recordRoborazziDebug`.</sub>
 
 ## ✨ Features
 
@@ -97,8 +111,10 @@ export ANDROID_HOME=/path/to/android-sdk   # needs platforms;android-35, build-t
 # -> app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Kotlin · Jetpack Compose (Material3) · AGP 8.7 · minSdk / targetSdk / compileSdk 35 · OkHttp.
+Kotlin · Jetpack Compose (Material3) · AGP 8.7 · minSdk / targetSdk / compileSdk 35 · OkHttp. Needs a JDK 17 toolchain.
 `applicationId` is `red.thugs.wardrive` (`.debug` suffix on debug builds). Lower `minSdk` in `app/build.gradle.kts` to widen device support.
+
+Screenshot tests (JVM, no emulator) live in `app/src/test/` — `./gradlew :app:recordRoborazziDebug` rewrites `docs/screenshots/`, `:app:verifyRoborazziDebug` fails on a UI change.
 
 ## 🗂️ Project layout
 
