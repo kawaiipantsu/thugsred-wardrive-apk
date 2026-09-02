@@ -119,8 +119,12 @@ class WardriveClient(baseUrl: String) {
 
     /**
      * Return a usable `wdrv_` ingest token, creating one via the /tokens form.
-     * The site shows a token exactly once, so this must be called right after it
-     * is minted; the caller is expected to cache the result.
+     *
+     * The site puts the freshly issued token into a one-shot session flash, so it
+     * is rendered on the **redirect target** of the create POST — exactly once.
+     * OkHttp follows that 302 for us, so the token is in the POST call's final
+     * response body; a second GET would come back empty (the flash is already
+     * consumed).
      */
     suspend fun ensureIngestToken(label: String): String = withContext(Dispatchers.IO) {
         val tokensUrl = url("tokens")
@@ -129,17 +133,23 @@ class WardriveClient(baseUrl: String) {
             .add("csrf_token", csrf)
             .add("label", label)
             .build()
-        http.newCall(Request.Builder().url(tokensUrl).post(create).build()).execute().use {
+        val page = http.newCall(Request.Builder().url(tokensUrl).post(create).build()).execute().use {
             if (it.request.url.encodedPath.endsWith("/login")) {
                 throw WardriveException("Session expired before a token could be created.")
             }
-        }
-        val page = http.newCall(Request.Builder().url(tokensUrl).get().build()).execute().use {
             it.body?.string().orEmpty()
         }
-        TOKEN_VALUE.find(page)?.groupValues?.get(1)?.trim()
-            ?: throw WardriveException("Token was created but could not be read back from the page.")
+        scrapeToken(page)
+            // Fallback for a flow that lands without the flash (e.g. no auto-redirect).
+            ?: scrapeToken(
+                http.newCall(Request.Builder().url(tokensUrl).get().build()).execute()
+                    .use { it.body?.string().orEmpty() },
+            )
+            ?: throw WardriveException("Token was created but could not be read back from the site.")
     }
+
+    private fun scrapeToken(html: String): String? =
+        TOKEN_VALUE.find(html)?.groupValues?.get(1)?.trim()?.takeIf { it.isNotEmpty() }
 
     // -- Live ingest ----------------------------------------------------
 
@@ -243,7 +253,7 @@ class WardriveClient(baseUrl: String) {
             Regex("""name=["']csrf_token["'][^>]*?value=["']([^"']+)["']"""),
             Regex("""value=["']([^"']+)["'][^>]*?name=["']csrf_token["']"""),
         )
-        val TOKEN_VALUE = Regex("""class="token-value">([^<]+)<""")
+        val TOKEN_VALUE = Regex("""class=["']token-value["'][^>]*>\s*([^<\s][^<]*?)\s*<""")
         val UPLOAD_ID_IN_PATH = Regex("""^/uploads/([0-9a-fA-F-]{36})$""")
         val FLASH = Regex("""class="flash[^"]*"[^>]*>(.*?)</""", RegexOption.DOT_MATCHES_ALL)
     }
