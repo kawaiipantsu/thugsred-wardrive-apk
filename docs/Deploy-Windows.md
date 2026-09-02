@@ -1,6 +1,6 @@
 # Deploy on Windows
 
-Install `THUGS-Wardrive-v1.0-debug.apk` onto an Android phone from Windows. It is
+Install `THUGS-Wardrive-debug.apk` onto an Android phone from Windows. It is
 a **debug** build signed with the standard Android debug key.
 
 > **Note — needs an approved account for sync.** Go Live and Upload require a
@@ -10,7 +10,7 @@ a **debug** build signed with the standard Android debug key.
 > scanning, the map, and local CSV export.
 
 Get the file:
-<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk>
+<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-debug.apk>
 
 ---
 
@@ -37,7 +37,7 @@ Get the file:
 winget install --id Google.PlatformTools
 
 adb devices
-adb install -r C:\path\to\THUGS-Wardrive-v1.0-debug.apk   # -r = replace, keeps data
+adb install -r C:\path\to\THUGS-Wardrive-debug.apk   # -r = replace, keeps data
 ```
 
 Manual alternative:
@@ -50,7 +50,7 @@ Manual alternative:
    ```powershell
    cd C:\platform-tools
    .\adb devices
-   .\adb install -r C:\Users\you\Downloads\THUGS-Wardrive-v1.0-debug.apk
+   .\adb install -r C:\Users\you\Downloads\THUGS-Wardrive-debug.apk
    ```
 
 ## Option B — no ADB
@@ -64,7 +64,7 @@ Manual alternative:
 
 ## Installing the tapped APK on the phone
 
-1. Open **Files** / Downloads, tap `THUGS-Wardrive-v1.0-debug.apk`.
+1. Open **Files** / Downloads, tap `THUGS-Wardrive-debug.apk`.
 2. If prompted about an unknown source → enable **Allow from this source** →
    back → **Install**.
 3. Play Protect may say *"Unsafe app blocked"* / *"not scanned"* → **More

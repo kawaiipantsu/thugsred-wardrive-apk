@@ -9,11 +9,11 @@ Per-OS, step-by-step guides moved to [`docs/`](docs/):
 Quick version (any OS with [adb](https://developer.android.com/tools/releases/platform-tools)):
 
 ```bash
-adb install -r THUGS-Wardrive-v1.0-debug.apk
+adb install -r THUGS-Wardrive-debug.apk
 ```
 
 Latest APK:
-<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk>
+<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-debug.apk>
 
 > **Go Live and Upload need a THUGS(red) Wardrive account approved by staff**
 > (register at <https://wardrive.thugs.red/register>, then ask on Discord for

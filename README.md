@@ -16,7 +16,7 @@
 
 <br/>
 
-<a href="https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk"><img src="https://img.shields.io/badge/⬇%20Download-latest%20APK-3DDC97?style=for-the-badge" alt="Download latest APK"></a>
+<a href="https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-debug.apk"><img src="https://img.shields.io/badge/⬇%20Download-latest%20APK-3DDC97?style=for-the-badge" alt="Download latest APK"></a>
 
 <br/>
 
@@ -75,11 +75,11 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 Debug build, signed with the standard Android debug key.
 
 ```bash
-adb install -r THUGS-Wardrive-v1.0-debug.apk
+adb install -r THUGS-Wardrive-debug.apk
 ```
 
 Or download and tap it on the phone:
-<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk>
+<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-debug.apk>
 
 Per-OS walkthroughs (ADB + no-cable, Play Protect, troubleshooting):
 [macOS](docs/Deploy-macOS.md) · [Linux](docs/Deploy-Linux.md) · [Windows](docs/Deploy-Windows.md)

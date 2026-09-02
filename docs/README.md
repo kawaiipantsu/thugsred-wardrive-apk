@@ -25,10 +25,10 @@ use the live list, map and counters, and export a CSV to local storage — but
 ## Get the app
 
 Latest debug APK:
-<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk>
+<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-debug.apk>
 
 ```
-adb install -r THUGS-Wardrive-v1.0-debug.apk
+adb install -r THUGS-Wardrive-debug.apk
 ```
 
 Signed with the standard Android **debug** key — fine for personal use, not the

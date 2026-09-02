@@ -1,6 +1,6 @@
 # Deploy on macOS
 
-Install `THUGS-Wardrive-v1.0-debug.apk` onto an Android phone from a Mac. It is a
+Install `THUGS-Wardrive-debug.apk` onto an Android phone from a Mac. It is a
 **debug** build signed with the standard Android debug key.
 
 > **Note — needs an approved account for sync.** Go Live and Upload require a
@@ -10,7 +10,7 @@ Install `THUGS-Wardrive-v1.0-debug.apk` onto an Android phone from a Mac. It is 
 > scanning, the map, and local CSV export.
 
 Get the file:
-<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk>
+<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-debug.apk>
 
 ---
 
@@ -38,7 +38,7 @@ brew install --cask android-platform-tools
 #   (or: brew install android-platform-tools)
 
 adb devices                                    # phone shows as "device"
-adb install -r THUGS-Wardrive-v1.0-debug.apk   # -r = replace, keeps data
+adb install -r THUGS-Wardrive-debug.apk   # -r = replace, keeps data
 ```
 
 - `unauthorized` in `adb devices` → unlock the phone and accept the prompt.
@@ -61,7 +61,7 @@ adb install -r THUGS-Wardrive-v1.0-debug.apk   # -r = replace, keeps data
 
 ## Installing the tapped APK on the phone
 
-1. Open **Files** / Downloads, tap `THUGS-Wardrive-v1.0-debug.apk`.
+1. Open **Files** / Downloads, tap `THUGS-Wardrive-debug.apk`.
 2. If prompted about an unknown source → enable **Allow from this source** →
    back → **Install**.
 3. Play Protect may say *"Unsafe app blocked"* / *"not scanned"* → **More
