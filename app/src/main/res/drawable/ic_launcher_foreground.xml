@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Concentric "signal" arcs over a location pin -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#3DDC97"
+        android:strokeWidth="4"
+        android:pathData="M40,46 a14,14 0 0 1 28,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#2FB37E"
+        android:strokeWidth="4"
+        android:pathData="M32,46 a22,22 0 0 1 44,0" />
+    <path
+        android:fillColor="#E64B5D"
+        android:pathData="M54,50 m-9,0 a9,9 0 1 0 18,0 a9,9 0 1 0 -18,0" />
+    <path
+        android:fillColor="#E64B5D"
+        android:pathData="M54,78 L45,58 L63,58 Z" />
+</vector>

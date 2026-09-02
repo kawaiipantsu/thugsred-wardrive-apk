@@ -1,0 +1,8 @@
+<resources>
+    <!-- Compose draws the real UI; this only styles the splash/system bars before onCreate. -->
+    <style name="Theme.Wardrive" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#0B0E14</item>
+        <item name="android:navigationBarColor">#0B0E14</item>
+        <item name="android:windowBackground">#0B0E14</item>
+    </style>
+</resources>

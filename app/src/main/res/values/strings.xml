@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">THUGS Wardrive</string>
+    <string name="channel_scan_name">Wardrive session</string>
+    <string name="channel_scan_desc">Shows that a scanning session is running</string>
+</resources>

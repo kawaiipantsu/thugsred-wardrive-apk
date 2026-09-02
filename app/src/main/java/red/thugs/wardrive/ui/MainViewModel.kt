@@ -1,0 +1,142 @@
+package red.thugs.wardrive.ui
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import red.thugs.wardrive.WardriveApp
+import red.thugs.wardrive.net.WardriveClient
+import red.thugs.wardrive.net.WardriveException
+import red.thugs.wardrive.scan.ScanService
+import java.io.File
+
+enum class Screen { LIST, MAP, ABOUT }
+
+/** Which action the credentials dialog is collecting a login for. */
+enum class CredentialPurpose { GO_LIVE, UPLOAD }
+
+sealed interface Busy {
+    data object None : Busy
+    data class Working(val what: String) : Busy
+}
+
+class MainViewModel(app: Application) : AndroidViewModel(app) {
+
+    private val appx get() = getApplication<WardriveApp>()
+    val session get() = appx.session
+    val prefs get() = appx.prefs
+    val scanning get() = appx.scanning
+    val powerSaving get() = appx.powerSaving
+    val liveStatus get() = appx.liveIngest.status
+    val track get() = appx.session.track
+
+    val currentLatLon = appx.location.location
+        .map { it?.let { l -> l.latitude to l.longitude } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    private val _events = Channel<String>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
+
+    private val _busy = kotlinx.coroutines.flow.MutableStateFlow<Busy>(Busy.None)
+    val busy = _busy
+
+    private fun toast(msg: String) {
+        viewModelScope.launch { _events.send(msg) }
+    }
+
+    // -- Scanning -------------------------------------------------------
+
+    fun startScan() = ScanService.start(appx)
+
+    fun stopScan() {
+        appx.liveIngest.stop()
+        ScanService.stop(appx)
+    }
+
+    fun resetSession() {
+        session.reset()
+        toast("Session cleared.")
+    }
+
+    // -- Go Live ------------------------------------------------------
+
+    fun goLive(username: String, password: String) {
+        prefs.username = username
+        viewModelScope.launch {
+            _busy.value = Busy.Working("Signing in…")
+            try {
+                val client = WardriveClient(prefs.baseUrl)
+                client.login(username, password)
+                _busy.value = Busy.Working("Creating an ingest token…")
+                val token = client.ensureIngestToken("THUGS Wardrive app — ${android.os.Build.MODEL}")
+                prefs.ingestToken = token
+                if (!scanning.value) startScan()
+                appx.liveIngest.start()
+                toast("Live. Observations will stream to the map as you drive.")
+            } catch (e: WardriveException) {
+                toast(e.message ?: "Go Live failed.")
+            } catch (e: Exception) {
+                toast("Go Live failed: ${e.message}")
+            } finally {
+                _busy.value = Busy.None
+            }
+        }
+    }
+
+    fun stopLive() {
+        appx.liveIngest.stop()
+        toast("Live ingest stopped.")
+    }
+
+    // -- Upload -----------------------------------------------------
+
+    /** [existing] null means "export the current session and upload that". */
+    fun upload(username: String, password: String, existing: File?) {
+        prefs.username = username
+        viewModelScope.launch {
+            _busy.value = Busy.Working("Preparing file…")
+            try {
+                val file = existing ?: run {
+                    if (session.isEmpty()) {
+                        toast("Nothing scanned yet.")
+                        return@launch
+                    }
+                    session.exportCurrentCsv()
+                }
+                _busy.value = Busy.Working("Signing in…")
+                val client = WardriveClient(prefs.baseUrl)
+                client.login(username, password)
+                _busy.value = Busy.Working("Uploading ${file.name}…")
+                val id = client.uploadCsv(file)
+                toast(
+                    if (id.length == 36) "Uploaded. Queued for moderation (id ${id.take(8)}…)."
+                    else "Uploaded. Queued for moderation.",
+                )
+            } catch (e: WardriveException) {
+                toast(e.message ?: "Upload failed.")
+            } catch (e: Exception) {
+                toast("Upload failed: ${e.message}")
+            } finally {
+                _busy.value = Busy.None
+            }
+        }
+    }
+
+    fun exportOnly() {
+        viewModelScope.launch {
+            if (session.isEmpty()) {
+                toast("Nothing scanned yet.")
+                return@launch
+            }
+            val f = session.exportCurrentCsv()
+            toast("Saved ${f.name} (${f.length()} bytes) to app storage.")
+        }
+    }
+
+    fun savedSessions(): List<File> = session.savedSessions()
+}
