@@ -7,6 +7,7 @@ import okhttp3.CookieJar
 import okhttp3.FormBody
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
@@ -15,6 +16,7 @@ import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
+import red.thugs.wardrive.BuildConfig
 import red.thugs.wardrive.data.Observation
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -54,6 +56,18 @@ class WardriveClient(baseUrl: String) {
         .readTimeout(45, TimeUnit.SECONDS)
         .followRedirects(true)
         .followSslRedirects(true)
+        // The server's WAF bans the default "okhttp/x" user agent outright
+        // (403 "banned permanently"), so identify ourselves on every request.
+        .addInterceptor(
+            Interceptor { chain ->
+                val r = chain.request()
+                val b = r.newBuilder()
+                if (r.header("User-Agent") == null) b.header("User-Agent", USER_AGENT)
+                if (r.header("Accept") == null) b.header("Accept", "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8")
+                if (r.header("Accept-Language") == null) b.header("Accept-Language", "en")
+                chain.proceed(b.build())
+            },
+        )
         .cookieJar(object : CookieJar {
             override fun saveFromResponse(url: HttpUrl, list: List<Cookie>) {
                 val host = url.host
@@ -152,7 +166,6 @@ class WardriveClient(baseUrl: String) {
         val req = Request.Builder()
             .url(url("api", "v1", "ingest"))
             .header("Authorization", "Bearer $token")
-            .header("User-Agent", "THUGS-Wardrive-Android/1.0")
             .post(payload.toRequestBody("application/json".toMediaType()))
             .build()
         http.newCall(req).execute().use { resp ->
@@ -202,21 +215,34 @@ class WardriveClient(baseUrl: String) {
     // -- helpers -----------------------------------------------------
 
     private fun fetchCsrf(pageUrl: HttpUrl): String {
-        val html = http.newCall(Request.Builder().url(pageUrl).get().build()).execute().use {
+        val (code, html) = http.newCall(Request.Builder().url(pageUrl).get().build()).execute().use {
             if (it.request.url.encodedPath.endsWith("/login") && !pageUrl.encodedPath.endsWith("/login")) {
                 throw WardriveException("Not signed in.")
             }
-            it.body?.string().orEmpty()
+            it.code to it.body?.string().orEmpty()
         }
-        return CSRF_FIELD.find(html)?.groupValues?.get(1)
-            ?: throw WardriveException("Could not read a CSRF token from ${pageUrl.encodedPath}.")
+        if (code !in 200..299) {
+            throw WardriveException(
+                "Server returned HTTP $code for ${pageUrl.encodedPath}" +
+                    (html.trim().takeIf { it.isNotEmpty() }?.let { ": " + it.take(120) } ?: "."),
+            )
+        }
+        for (re in CSRF_PATTERNS) re.find(html)?.groupValues?.get(1)?.let { return it }
+        throw WardriveException("Could not read a sign-in token from ${pageUrl.encodedPath} (unexpected page).")
     }
 
     private fun extractFlash(html: String): String? =
         FLASH.find(html)?.groupValues?.get(1)?.trim()?.replace(Regex("<[^>]+>"), "")?.takeIf { it.isNotBlank() }
 
     private companion object {
-        val CSRF_FIELD = Regex("""name="csrf_token"\s+value="([^"]+)"""")
+        val USER_AGENT =
+            "THUGS-Wardrive-Android/${BuildConfig.VERSION_NAME} (+https://github.com/kawaiipantsu/thugsred-wardrive-apk)"
+
+        // Tolerate attribute order and single/double quotes.
+        val CSRF_PATTERNS = listOf(
+            Regex("""name=["']csrf_token["'][^>]*?value=["']([^"']+)["']"""),
+            Regex("""value=["']([^"']+)["'][^>]*?name=["']csrf_token["']"""),
+        )
         val TOKEN_VALUE = Regex("""class="token-value">([^<]+)<""")
         val UPLOAD_ID_IN_PATH = Regex("""^/uploads/([0-9a-fA-F-]{36})$""")
         val FLASH = Regex("""class="flash[^"]*"[^>]*>(.*?)</""", RegexOption.DOT_MATCHES_ALL)
