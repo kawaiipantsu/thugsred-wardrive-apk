@@ -51,14 +51,13 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 
 <table>
   <tr>
-    <td width="25%"><img src="docs/screenshots/list.png" alt="Live session list"><br/><sub><b>Live list</b> — one row per device, footer counts</sub></td>
-    <td width="25%"><img src="docs/screenshots/map.png" alt="Offline map"><br/><sub><b>Map</b> — points + driving path, no tiles</sub></td>
-    <td width="25%"><img src="docs/screenshots/list_empty.png" alt="Scanning, no results yet"><br/><sub><b>Scanning</b> — waiting for a GPS fix</sub></td>
-    <td width="25%"><img src="docs/screenshots/about.png" alt="About screen"><br/><sub><b>About</b> — project + optimise checklist</sub></td>
+    <td width="33%"><img src="docs/screenshots/list.png" alt="Live session list"><br/><sub><b>Live list</b> — one row per device, footer counts</sub></td>
+    <td width="33%"><img src="docs/screenshots/map.png" alt="Offline map"><br/><sub><b>Map</b> — points + driving path, no tiles</sub></td>
+    <td width="33%"><img src="docs/screenshots/list_empty.png" alt="Scanning, no results yet"><br/><sub><b>Scanning</b> — waiting for a GPS fix</sub></td>
   </tr>
 </table>
 
-<sub>Rendered from the real Compose UI on the JVM (Robolectric + Roborazzi) with sample data — `./gradlew :app:recordRoborazziDebug`.</sub>
+<sub>Rendered from the real Compose UI on the JVM (Robolectric + Roborazzi) with sample data — `./gradlew :app:recordRoborazziDebug`. The full <a href="docs/screenshots/about.png">About screen</a> is a tall scroll.</sub>
 
 ## ✨ Features
 
