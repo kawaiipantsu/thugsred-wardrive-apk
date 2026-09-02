@@ -12,3 +12,6 @@ local.properties
 
 # Built APKs ship as GitHub Release assets, not in the tree
 *.apk
+
+# Kotlin compiler daemon logs
+.kotlin/
