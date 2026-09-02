@@ -63,6 +63,14 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_HAPTIC, false)
         set(v) = sp.edit().putBoolean(K_HAPTIC, v).apply()
 
+    /**
+     * Drive mode: fastest GPS updates and full-power scanning with no idle
+     * back-off — maximum coverage, heavy battery use. Off by default.
+     */
+    var driveMode: Boolean
+        get() = sp.getBoolean(K_DRIVE_MODE, false)
+        set(v) = sp.edit().putBoolean(K_DRIVE_MODE, v).apply()
+
     /** "metric" or "imperial" — affects the map scale bar and distances. */
     var units: String
         get() = sp.getString(K_UNITS, "metric") ?: "metric"
@@ -100,6 +108,7 @@ class Prefs(context: Context) {
         const val K_MAP_FOLLOW = "map_follow"
         const val K_KEEP_SCREEN_ON = "keep_screen_on"
         const val K_HAPTIC = "new_device_haptic"
+        const val K_DRIVE_MODE = "drive_mode"
         const val K_UNITS = "units"
         const val K_TOKEN = "ingest_token"
     }

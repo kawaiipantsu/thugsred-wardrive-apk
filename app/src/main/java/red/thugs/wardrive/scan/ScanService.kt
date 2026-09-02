@@ -55,9 +55,30 @@ class ScanService : Service() {
                 stopEverything()
                 return START_NOT_STICKY
             }
+            ACTION_RECONFIG -> {
+                if (started) applyConfig() else stopSelf(startId)
+                return START_NOT_STICKY
+            }
             else -> startEverything()
         }
         return START_STICKY
+    }
+
+    /** Re-read prefs that change scan/GPS behaviour (Drive mode toggled mid-session). */
+    private fun applyConfig() {
+        if (!started) return
+        val drive = app.prefs.driveMode
+        wifi.setDriveMode(drive)
+        bt.setDriveMode(drive)
+        app.location.setFast(drive)
+        app.setDriveMode(drive)
+        if (drive) {
+            // Cancel any idle back-off immediately.
+            lastPowerSaving = false
+            wifi.setPowerSaving(false)
+            bt.setPowerSaving(false)
+            app.setPowerSaving(false)
+        }
     }
 
     private fun startEverything() {
@@ -72,7 +93,11 @@ class ScanService : Service() {
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "wardrive:scan")
             .apply { setReferenceCounted(false); acquire() }
 
-        app.location.start()
+        val drive = app.prefs.driveMode
+        app.location.start(fast = drive)
+        wifi.setDriveMode(drive)
+        bt.setDriveMode(drive)
+        app.setDriveMode(drive)
         wifi.start()
         bt.start()
         app.setScanning(true)
@@ -81,10 +106,14 @@ class ScanService : Service() {
         var lastTotal = -1
         combine(app.session.counts, app.session.sightingCount) { c, s -> c to s }
             .onEach { (c, s) ->
-                val idle = if (app.powerSaving.value) " · idle" else ""
+                val mode = when {
+                    app.driveMode.value -> " · drive"
+                    app.powerSaving.value -> " · idle"
+                    else -> ""
+                }
                 notify(
                     "WiFi ${c.wifiAp} · BT ${c.btClassic} · BLE ${c.btLe} · $s sightings" +
-                        (if (app.location.current() == null) " · no GPS fix" else "") + idle,
+                        (if (app.location.current() == null) " · no GPS fix" else "") + mode,
                 )
                 if (lastTotal in 0 until c.total && app.prefs.newDeviceHaptic) tick()
                 lastTotal = c.total
@@ -99,11 +128,11 @@ class ScanService : Service() {
         }
     }
 
-    /** Every [TUNE_MS] decide whether we are moving and set the radio cadence. */
+    /** Every [TUNE_MS] decide whether we are moving and set the radio cadence. Drive mode opts out. */
     private val tuning = object : Runnable {
         override fun run() {
             if (!started) return
-            val saving = !app.location.isMoving()
+            val saving = if (app.prefs.driveMode) false else !app.location.isMoving()
             if (saving != lastPowerSaving) {
                 lastPowerSaving = saving
                 wifi.setPowerSaving(saving)
@@ -121,6 +150,7 @@ class ScanService : Service() {
         app.location.stop()
         app.setScanning(false)
         app.setPowerSaving(false)
+        app.setDriveMode(false)
         lastPowerSaving = null
         runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
         wakeLock = null
@@ -166,6 +196,7 @@ class ScanService : Service() {
     companion object {
         const val ACTION_START = "red.thugs.wardrive.START"
         const val ACTION_STOP = "red.thugs.wardrive.STOP"
+        const val ACTION_RECONFIG = "red.thugs.wardrive.RECONFIG"
         private const val NOTIF_ID = 42
         private const val TUNE_MS = 15_000L
 
@@ -176,6 +207,11 @@ class ScanService : Service() {
 
         fun stop(context: Context) {
             context.startService(Intent(context, ScanService::class.java).setAction(ACTION_STOP))
+        }
+
+        /** Ask a running service to re-read scan/GPS prefs. No-op if not running. */
+        fun reconfigure(context: Context) {
+            context.startService(Intent(context, ScanService::class.java).setAction(ACTION_RECONFIG))
         }
     }
 }

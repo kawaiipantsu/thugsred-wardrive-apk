@@ -30,6 +30,7 @@ import red.thugs.wardrive.data.Prefs
 fun SettingsScreen(
     prefs: Prefs,
     onChanged: () -> Unit,
+    onDriveMode: (Boolean) -> Unit,
     onOpenAbout: () -> Unit,
     onForgetLogin: () -> Unit,
     onResetSession: () -> Unit,
@@ -40,6 +41,13 @@ fun SettingsScreen(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text("Settings", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+
+        SectionLabel("Drive mode")
+        ToggleRow(
+            "Drive mode",
+            "Fastest GPS + full-power WiFi/BT scanning, no idle back-off. Best coverage, heavy battery — keep the phone charged.",
+            prefs.driveMode,
+        ) { onDriveMode(it); onChanged() }
 
         SectionLabel("Map")
         ToggleRow("Show map tiles (OpenStreetMap)", "Uses data. Off = graticule only.", prefs.mapTiles) {

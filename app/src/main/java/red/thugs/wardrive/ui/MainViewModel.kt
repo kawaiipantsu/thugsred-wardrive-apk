@@ -37,6 +37,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val prefs get() = appx.prefs
     val scanning get() = appx.scanning
     val powerSaving get() = appx.powerSaving
+    val driveMode get() = appx.driveMode
     val liveStatus get() = appx.liveIngest.status
     val track get() = appx.session.track
     val congestion get() = appx.session.congestion
@@ -74,6 +75,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resetSession() {
         session.reset()
         toast("Session cleared.")
+    }
+
+    /** Drive mode: fastest GPS + full-power scanning, no idle back-off. */
+    fun setDriveMode(on: Boolean) {
+        prefs.driveMode = on
+        appx.setDriveMode(on && scanning.value)
+        if (scanning.value) ScanService.reconfigure(appx)
+        toast(if (on) "Drive mode on — GPS + radios at full rate. Keep it charged." else "Drive mode off.")
     }
 
     // -- Go Live ------------------------------------------------------

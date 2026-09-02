@@ -29,12 +29,19 @@ class WardriveApp : Application() {
     private val _powerSaving = MutableStateFlow(false)
     val powerSaving: StateFlow<Boolean> = _powerSaving.asStateFlow()
 
+    private val _driveMode = MutableStateFlow(false)
+    val driveMode: StateFlow<Boolean> = _driveMode.asStateFlow()
+
     fun setScanning(value: Boolean) {
         _scanning.value = value
     }
 
     fun setPowerSaving(value: Boolean) {
         _powerSaving.value = value
+    }
+
+    fun setDriveMode(value: Boolean) {
+        _driveMode.value = value
     }
 
     override fun onCreate() {

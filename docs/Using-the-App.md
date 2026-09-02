@@ -70,7 +70,7 @@ Under the header: **List · Map · Stats · Scope**. Tap to switch.
 | **Saved sessions…** | List session CSVs on the device; upload one later |
 | **Export CSV to storage** | Flush the current session file to app storage |
 | **Forget saved login** | Wipe the stored token + credentials (shown once signed in) |
-| **Settings** | Tiles, follow-me, keep-screen-on, haptic, units |
+| **Settings** | Drive mode, tiles, follow-me, keep-screen-on, haptic, units |
 | **About** | Project info + the optimise-your-phone checklist |
 
 The session CSV is written to disk **as you drive**, so a crash or the OS killing
@@ -107,6 +107,13 @@ A live **channel-congestion** view — *not* an RF spectrum (stock Android expos
 no noise floor). Every AP is drawn at its real channel width so 40/80/160 MHz
 overlap and crowding are visible, with a rolling **waterfall** of per-frequency
 AP density under it. Toggle 2.4 / 5 GHz.
+
+## Drive mode
+
+Settings → **Drive mode**. Removes the idle back-off: GPS is polled as fast as
+the chipset allows and Wi-Fi + Bluetooth scan at full power the whole time, moving
+or not. Best coverage per kilometre, but a big jump in battery use — run it
+plugged in.
 
 ## Go Live
 

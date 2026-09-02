@@ -18,8 +18,8 @@ import kotlinx.coroutines.flow.asStateFlow
  * [current], the freshest fix we have; a stale fix (older than [MAX_AGE_MS]) is
  * treated as no fix so an observation is not placed where the car used to be.
  *
- * Battery: updates are requested at [UPDATE_INTERVAL_MS], not as fast as the
- * chipset can go, and the NETWORK provider is only a fallback for an early fix.
+ * Battery: updates default to [UPDATE_INTERVAL_MS]. Drive mode ([setFast]) asks
+ * for every fix the chipset produces.
  */
 class LocationProvider(context: Context) {
 
@@ -28,6 +28,9 @@ class LocationProvider(context: Context) {
 
     private val _location = MutableStateFlow<Location?>(null)
     val location: StateFlow<Location?> = _location.asStateFlow()
+
+    private var running = false
+    private var fast = false
 
     private val listener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
@@ -47,26 +50,41 @@ class LocationProvider(context: Context) {
         ContextCompat.checkSelfPermission(appContext, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED
 
+    fun start(fast: Boolean = false) {
+        this.fast = fast
+        running = true
+        request()
+    }
+
+    /** Change the update rate on the fly (Drive mode toggled mid-session). */
+    fun setFast(fast: Boolean) {
+        if (fast == this.fast) return
+        this.fast = fast
+        if (running) {
+            runCatching { lm.removeUpdates(listener) }
+            request()
+        }
+    }
+
     @Suppress("MissingPermission")
-    fun start() {
+    private fun request() {
         if (!hasPermission()) return
+        val gpsMs = if (fast) 0L else UPDATE_INTERVAL_MS
+        val netMs = if (fast) 2_000L else NETWORK_INTERVAL_MS
         if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
             lm.getLastKnownLocation(LocationManager.GPS_PROVIDER)?.let(listener::onLocationChanged)
-            lm.requestLocationUpdates(
-                LocationManager.GPS_PROVIDER, UPDATE_INTERVAL_MS, 0f, listener, Looper.getMainLooper(),
-            )
+            lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, gpsMs, 0f, listener, Looper.getMainLooper())
         }
         if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
             lm.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)?.let {
                 if (_location.value == null) listener.onLocationChanged(it)
             }
-            lm.requestLocationUpdates(
-                LocationManager.NETWORK_PROVIDER, NETWORK_INTERVAL_MS, 0f, listener, Looper.getMainLooper(),
-            )
+            lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, netMs, 0f, listener, Looper.getMainLooper())
         }
     }
 
     fun stop() {
+        running = false
         runCatching { lm.removeUpdates(listener) }
     }
 

@@ -73,6 +73,7 @@ data class WardriveUiState(
     val counts: SessionCounts = SessionCounts(),
     val scanning: Boolean = false,
     val powerSaving: Boolean = false,
+    val driveMode: Boolean = false,
     val live: LiveStatus = LiveStatus(),
     val track: List<TrackPoint> = emptyList(),
     val current: Pair<Double, Double>? = null,
@@ -118,6 +119,7 @@ fun MainScreen(
     val counts by vm.session.counts.collectAsStateWithLifecycle()
     val scanning by vm.scanning.collectAsStateWithLifecycle()
     val powerSaving by vm.powerSaving.collectAsStateWithLifecycle()
+    val driveMode by vm.driveMode.collectAsStateWithLifecycle()
     val live by vm.liveStatus.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
     val track by vm.track.collectAsStateWithLifecycle()
@@ -137,6 +139,7 @@ fun MainScreen(
         counts = counts,
         scanning = scanning,
         powerSaving = powerSaving,
+        driveMode = driveMode,
         live = live,
         track = track,
         current = currentLatLon,
@@ -175,6 +178,7 @@ fun MainScreen(
                         settingsRev++
                         mapTiles = vm.prefs.mapTiles
                     },
+                    onDriveMode = { vm.setDriveMode(it) },
                     onOpenAbout = { screen = Screen.ABOUT },
                     onForgetLogin = { vm.forgetLogin() },
                     onResetSession = { vm.resetSession() },
@@ -291,6 +295,7 @@ internal fun WardriveScaffold(
                 state.counts.wifiAp, state.counts.btClassic, state.counts.btLe,
                 state.counts.withFix, state.observations.size,
                 powerSaving = state.scanning && state.powerSaving,
+                driveMode = state.scanning && state.driveMode,
             )
         },
         floatingActionButton = {
@@ -469,19 +474,20 @@ fun ObservationRow(o: Observation, onClick: (() -> Unit)? = null) {
 }
 
 @Composable
-fun SessionFooter(wifi: Int, bt: Int, ble: Int, withFix: Int, devices: Int, powerSaving: Boolean = false) {
+fun SessionFooter(
+    wifi: Int,
+    bt: Int,
+    ble: Int,
+    withFix: Int,
+    devices: Int,
+    powerSaving: Boolean = false,
+    driveMode: Boolean = false,
+) {
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 3.dp) {
         Column(Modifier.fillMaxWidth().navigationBarsPadding()) {
-            if (powerSaving) {
-                Text(
-                    "power-saving · stationary — scan cadence reduced",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.secondary,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f))
-                        .padding(horizontal = 12.dp, vertical = 3.dp),
-                )
+            when {
+                driveMode -> FooterStrip("drive mode — GPS + radios at full rate", MaterialTheme.colorScheme.primary)
+                powerSaving -> FooterStrip("power-saving · stationary — scan cadence reduced", MaterialTheme.colorScheme.secondary)
             }
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
@@ -496,6 +502,19 @@ fun SessionFooter(wifi: Int, bt: Int, ble: Int, withFix: Int, devices: Int, powe
             }
         }
     }
+}
+
+@Composable
+private fun FooterStrip(text: String, color: androidx.compose.ui.graphics.Color) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelSmall,
+        color = color,
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(color.copy(alpha = 0.12f))
+            .padding(horizontal = 12.dp, vertical = 3.dp),
+    )
 }
 
 @Composable

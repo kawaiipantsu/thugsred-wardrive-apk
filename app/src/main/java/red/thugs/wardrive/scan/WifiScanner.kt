@@ -34,6 +34,7 @@ class WifiScanner(
     private var running = false
 
     @Volatile private var powerSaving = false
+    @Volatile private var driveMode = false
     @Volatile private var nudgeMs = NUDGE_MOVING_MS
 
     private val receiver = object : BroadcastReceiver() {
@@ -45,7 +46,7 @@ class WifiScanner(
     private val nudge = object : Runnable {
         override fun run() {
             if (!running) return
-            if (!powerSaving) {
+            if (driveMode || !powerSaving) {
                 @Suppress("DEPRECATION")
                 runCatching { wifi.startScan() }
             }
@@ -75,7 +76,20 @@ class WifiScanner(
     /** power-saving = the drive is paused; back off the active scan nudge. */
     fun setPowerSaving(value: Boolean) {
         powerSaving = value
-        nudgeMs = if (value) NUDGE_IDLE_MS else NUDGE_MOVING_MS
+        recomputeNudge()
+    }
+
+    fun setDriveMode(value: Boolean) {
+        driveMode = value
+        recomputeNudge()
+    }
+
+    private fun recomputeNudge() {
+        nudgeMs = when {
+            driveMode -> NUDGE_DRIVE_MS
+            powerSaving -> NUDGE_IDLE_MS
+            else -> NUDGE_MOVING_MS
+        }
     }
 
     private fun ingest() {
@@ -121,6 +135,7 @@ class WifiScanner(
     }
 
     private companion object {
+        const val NUDGE_DRIVE_MS = 10_000L
         const val NUDGE_MOVING_MS = 25_000L
         const val NUDGE_IDLE_MS = 90_000L
     }

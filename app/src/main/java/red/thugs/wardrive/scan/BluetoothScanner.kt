@@ -41,6 +41,7 @@ class BluetoothScanner(
     private var leScanning = false
 
     @Volatile private var powerSaving = false
+    @Volatile private var driveMode = false
     @Volatile private var discoveryIntervalMs = DISCOVERY_MOVING_MS
 
     fun hasScanPermission(): Boolean =
@@ -80,7 +81,7 @@ class BluetoothScanner(
             adapter?.let { a ->
                 if (a.isEnabled) {
                     if (a.isDiscovering) a.cancelDiscovery()
-                    if (!powerSaving) runCatching { a.startDiscovery() }
+                    if (driveMode || !powerSaving) runCatching { a.startDiscovery() }
                 }
             }
             handler.postDelayed(this, discoveryIntervalMs)
@@ -115,8 +116,23 @@ class BluetoothScanner(
     fun setPowerSaving(value: Boolean) {
         if (value == powerSaving) return
         powerSaving = value
-        discoveryIntervalMs = if (value) DISCOVERY_IDLE_MS else DISCOVERY_MOVING_MS
-        // Re-apply the LE scan with the new scan mode / report delay.
+        reapply()
+    }
+
+    @Suppress("MissingPermission")
+    fun setDriveMode(value: Boolean) {
+        if (value == driveMode) return
+        driveMode = value
+        reapply()
+    }
+
+    @Suppress("MissingPermission")
+    private fun reapply() {
+        discoveryIntervalMs = when {
+            driveMode -> DISCOVERY_DRIVE_MS
+            powerSaving -> DISCOVERY_IDLE_MS
+            else -> DISCOVERY_MOVING_MS
+        }
         val a = adapter
         if (running && a != null && a.isEnabled) {
             stopLe()
@@ -127,11 +143,16 @@ class BluetoothScanner(
     @Suppress("MissingPermission")
     private fun startLe(a: BluetoothAdapter) {
         if (leScanning || !a.isEnabled) return
+        val lowPower = powerSaving && !driveMode
         val settings = ScanSettings.Builder()
-            .setScanMode(
-                if (powerSaving) ScanSettings.SCAN_MODE_LOW_POWER else ScanSettings.SCAN_MODE_LOW_LATENCY,
+            .setScanMode(if (lowPower) ScanSettings.SCAN_MODE_LOW_POWER else ScanSettings.SCAN_MODE_LOW_LATENCY)
+            .setReportDelay(
+                when {
+                    driveMode -> 0L // deliver immediately — maximum catch
+                    powerSaving -> REPORT_DELAY_IDLE_MS
+                    else -> REPORT_DELAY_MOVING_MS
+                },
             )
-            .setReportDelay(if (powerSaving) REPORT_DELAY_IDLE_MS else REPORT_DELAY_MOVING_MS)
             .build()
         runCatching { a.bluetoothLeScanner?.startScan(null, settings, leCallback) }
             .onSuccess { leScanning = true }
@@ -167,6 +188,7 @@ class BluetoothScanner(
     }
 
     private companion object {
+        const val DISCOVERY_DRIVE_MS = 8_000L
         const val DISCOVERY_MOVING_MS = 13_000L
         const val DISCOVERY_IDLE_MS = 45_000L
         const val REPORT_DELAY_MOVING_MS = 2_000L
