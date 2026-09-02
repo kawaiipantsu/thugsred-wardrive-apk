@@ -14,8 +14,8 @@ android {
         // Android 15+ only, as requested. Lower this (e.g. to 30) to widen device support.
         minSdk = 35
         targetSdk = 35
-        versionCode = 5
-        versionName = "1.4"
+        versionCode = 6
+        versionName = "1.5"
 
         // The live site. Overridable at runtime in the credentials dialog.
         buildConfigField("String", "DEFAULT_BASE_URL", "\"https://wardrive.thugs.red\"")

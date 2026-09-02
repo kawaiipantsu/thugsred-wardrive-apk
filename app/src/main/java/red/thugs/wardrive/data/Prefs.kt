@@ -78,6 +78,11 @@ class Prefs(context: Context) {
 
     val imperial: Boolean get() = units == "imperial"
 
+    /** Cleared once the first-run onboarding has been completed or skipped. */
+    var onboarded: Boolean
+        get() = sp.getBoolean(K_ONBOARDED, false)
+        set(v) = sp.edit().putBoolean(K_ONBOARDED, v).apply()
+
     var ingestToken: String?
         get() = sp.getString(K_TOKEN, null)?.takeIf { it.isNotBlank() }
         set(v) = sp.edit().apply { if (v.isNullOrBlank()) remove(K_TOKEN) else putString(K_TOKEN, v) }.apply()
@@ -110,6 +115,7 @@ class Prefs(context: Context) {
         const val K_HAPTIC = "new_device_haptic"
         const val K_DRIVE_MODE = "drive_mode"
         const val K_UNITS = "units"
+        const val K_ONBOARDED = "onboarded"
         const val K_TOKEN = "ingest_token"
     }
 }

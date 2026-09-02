@@ -12,6 +12,7 @@ import org.robolectric.annotation.GraphicsMode
 import red.thugs.wardrive.net.LiveState
 import red.thugs.wardrive.net.LiveStatus
 import red.thugs.wardrive.ui.AboutScreen
+import red.thugs.wardrive.ui.OnboardingScreen
 import red.thugs.wardrive.ui.Screen
 import red.thugs.wardrive.ui.WardriveActions
 import red.thugs.wardrive.ui.WardriveScaffold
@@ -101,6 +102,14 @@ class ScreenshotTest {
                     actions = WardriveActions(),
                 )
             }
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1200dp-420dpi")
+    fun onboarding() {
+        captureRoboImage("../docs/screenshots/onboarding.png") {
+            WardriveTheme(darkTheme = true) { OnboardingScreen(onDone = {}) }
         }
     }
 

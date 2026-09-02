@@ -34,6 +34,7 @@ fun SettingsScreen(
     onOpenAbout: () -> Unit,
     onForgetLogin: () -> Unit,
     onResetSession: () -> Unit,
+    onReplayIntro: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -85,6 +86,7 @@ fun SettingsScreen(
 
         TextButton(onClick = onForgetLogin) { Text("Forget saved login") }
         TextButton(onClick = onResetSession) { Text("Clear current session") }
+        TextButton(onClick = onReplayIntro) { Text("Show the intro again") }
         TextButton(onClick = onOpenAbout) { Text("About & phone-optimise guide") }
 
         Text(

@@ -106,6 +106,12 @@ fun MainScreen(
 ) {
     val snackbar = remember { SnackbarHostState() }
 
+    var onboarded by remember { mutableStateOf(vm.prefs.onboarded) }
+    if (!onboarded) {
+        OnboardingScreen(onDone = { vm.prefs.onboarded = true; onboarded = true })
+        return
+    }
+
     var screen by remember { mutableStateOf(Screen.LIST) }
     var credPurpose by remember { mutableStateOf<CredentialPurpose?>(null) }
     var pendingUploadFile by remember { mutableStateOf<File?>(null) }
@@ -182,6 +188,7 @@ fun MainScreen(
                     onOpenAbout = { screen = Screen.ABOUT },
                     onForgetLogin = { vm.forgetLogin() },
                     onResetSession = { vm.resetSession() },
+                    onReplayIntro = { vm.prefs.onboarded = false; onboarded = false },
                 )
                 Screen.LIST -> Column(Modifier.fillMaxSize()) {
                     LiveStrip(state.live)

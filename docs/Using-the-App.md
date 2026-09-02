@@ -14,10 +14,16 @@ Without an approved account the app is **scan-only** — WiFi + Bluetooth scanni
 the live list, the map, the counters and local CSV export all work; Go Live and
 Upload fail at sign-in.
 
-## First launch — permissions
+## First launch
 
-Grant these when asked (Settings → Apps → THUGS Wardrive → Permissions to change
-later):
+A 3-step walkthrough covers what the app does, the **account** flow (register →
+Discord approval; scan-only without one), and the **permissions** — with a
+*Grant permissions* button and a separate *Allow all the time* step for
+background location. You can **Skip** it. Re-open it any time from
+Settings → *Show the intro again*.
+
+Permissions (grant when asked, or later from Settings → Apps → THUGS Wardrive →
+Permissions):
 
 - **Location — Allow all the time.** Every observation is placed at a GPS fix,
   and "all the time" is what lets scanning continue with the screen off.

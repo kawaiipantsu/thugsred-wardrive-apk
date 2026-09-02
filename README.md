@@ -57,6 +57,7 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
   </tr>
   <tr>
     <td width="33%"><img src="docs/screenshots/scope.png" alt="Scope"><br/><sub><b>Scope</b> — live channel congestion + waterfall</sub></td>
+    <td width="33%"><img src="docs/screenshots/onboarding.png" alt="First-run onboarding"><br/><sub><b>Onboarding</b> — account + permissions</sub></td>
     <td width="33%"><img src="docs/screenshots/list_empty.png" alt="Scanning, no results yet"><br/><sub><b>Scanning</b> — waiting for a GPS fix</sub></td>
     <td width="33%"><a href="docs/screenshots/about.png">About</a> — project + phone-optimise checklist (tall scroll)</td>
   </tr>
@@ -67,6 +68,7 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 ## ✨ Features
 
 - **Scan** WiFi access points + Bluetooth Classic + BLE, each sighting stamped with a GPS fix.
+- **First-run onboarding** — a 3-step walkthrough for the account flow and the runtime permissions (re-openable from Settings).
 - **Quick nav** — a `List · Map · Stats · Scope` strip under the header.
 - **List** — one row per device; filter (WiFi/BT/BLE/new), sort (recent/strongest/SSID/channel), text search, tap a row for a detail sheet (all sightings, signal graph, distance, copy BSSID, open on the site).
 - **Map** — points + driving path on a Compose `Canvas` (Web Mercator); pinch/pan/fit, follow-me, GPS accuracy ring. Offline by default (lat/long graticule, scale bar, N arrow); **OpenStreetMap tiles are opt-in** (no API key, cached, darkened to match).
@@ -136,7 +138,7 @@ app/src/main/java/red/thugs/wardrive/
   scan/     WifiScanner, BluetoothScanner, ScanService (foreground + power tuning + haptic)
   location/ LocationProvider (isMoving)
   net/      WardriveClient (login/token/ingest/upload), LiveIngestManager
-  ui/       MainScreen (WardriveScaffold + quick-nav), MapScreen + OsmTiles, StatsScreen,
+  ui/       MainScreen (WardriveScaffold + quick-nav), OnboardingScreen, MapScreen + OsmTiles, StatsScreen,
             ScopeScreen, ListView, ObservationDetailSheet, SettingsScreen, CredentialsDialog,
             AboutScreen, MainViewModel, AppIcons, theme/
 ```
