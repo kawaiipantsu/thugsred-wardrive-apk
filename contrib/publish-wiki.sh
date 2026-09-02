@@ -55,6 +55,39 @@ sed -i -E \
   -e 's#\]\(LICENSE\)#](https://github.com/kawaiipantsu/thugsred-wardrive-apk/blob/main/LICENSE)#g' \
   ./*.md
 
+# Banner at the top of Home.
+printf '<p align="center"><img src="%s/assets/banner.png" alt="THUGS Wardrive" width="100%%"></p>\n\n' "$RAW" \
+  | cat - Home.md > Home.tmp && mv Home.tmp Home.md
+
+# Screenshots page: embed the images instead of just listing filenames.
+cat > Screenshots.md <<EOF
+# Screenshots
+
+Rendered from the real Jetpack Compose UI on the JVM (Robolectric + Roborazzi)
+with sample data — regenerate with \`./gradlew :app:recordRoborazziDebug\`.
+
+## List
+![List]($RAW/docs/screenshots/list.png)
+
+## Map
+![Map]($RAW/docs/screenshots/map.png)
+
+## Stats
+![Stats]($RAW/docs/screenshots/stats.png)
+
+## Scope
+![Scope]($RAW/docs/screenshots/scope.png)
+
+## First-run onboarding
+![Onboarding]($RAW/docs/screenshots/onboarding.png)
+
+## Scanning (empty state)
+![Scanning]($RAW/docs/screenshots/list_empty.png)
+
+## About
+![About]($RAW/docs/screenshots/about.png)
+EOF
+
 cat > _Sidebar.md <<'EOF'
 ### THUGS Wardrive
 
