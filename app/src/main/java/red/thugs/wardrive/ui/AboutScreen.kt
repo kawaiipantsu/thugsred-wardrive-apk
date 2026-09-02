@@ -119,8 +119,10 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             "Known limits",
             "• Android throttles Wi-Fi scans to ~4 per 2 min by default. Turn off “Wi-Fi scan throttling” " +
                 "in Developer options and the app detects it and switches to high-rate scanning (Settings " +
-                "shows the state). 5/6 GHz APs only appear after a full scan; a few OEMs also limit 5 GHz " +
-                "scanning on battery / with Wi-Fi power-saving on — disable that for a drive.\n" +
+                "shows the state). Many budget phones have a 2.4 GHz-only Wi-Fi radio (802.11 b/g/n) and " +
+                "physically cannot see 5/6 GHz — Stats and Settings report your device's bands. On a " +
+                "dual-band phone, 5/6 GHz APs only appear after a full scan, and a few OEMs limit 5 GHz " +
+                "scanning on battery / with Wi-Fi power-saving on.\n" +
                 "• An observation is only recorded with a fresh GPS fix; the 0,0 no-lock artefact is dropped.\n" +
                 "• Wi-Fi client detection needs monitor mode and is not possible on a stock device.\n" +
                 "• The password is kept only if you tick “Stay signed in on this device” — then it is stored encrypted (Android Keystore), device-local, and never leaves the phone except to sign in to your server. “Forget saved login” wipes it. Otherwise only the issued ingest token is kept.",

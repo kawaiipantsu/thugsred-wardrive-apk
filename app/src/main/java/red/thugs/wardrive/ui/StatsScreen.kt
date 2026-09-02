@@ -46,6 +46,16 @@ fun StatsScreen(
     val cs = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
     val wifi = remember(observations) { observations.filter { it.kind == RadioKind.WIFI_AP } }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val radioBands = remember {
+        val wm = ctx.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE)
+            as android.net.wifi.WifiManager
+        buildList {
+            add("2.4")
+            if (runCatching { wm.is5GHzBandSupported }.getOrDefault(false)) add("5")
+            if (runCatching { wm.is6GHzBandSupported }.getOrDefault(false)) add("6")
+        }
+    }
 
     Column(
         modifier
@@ -69,6 +79,16 @@ fun StatsScreen(
             Metric("Open", open, cs.tertiary)
             Metric("Hidden", hidden, cs.onSurfaceVariant)
         }
+
+        Text(
+            if (radioBands.size == 1) {
+                "This phone's Wi-Fi radio is 2.4 GHz only — it cannot see 5/6 GHz networks."
+            } else {
+                "This phone's Wi-Fi supports ${radioBands.joinToString(" / ")} GHz."
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (radioBands.size == 1) cs.tertiary else cs.onSurfaceVariant,
+        )
 
         WifiInfo.bestChannel24(observations)?.let { (ch, n) ->
             Text(

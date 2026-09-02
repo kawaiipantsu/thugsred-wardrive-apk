@@ -70,11 +70,23 @@ fun SettingsScreen(
             prefs.newDeviceHaptic = it; onChanged()
         }
         val ctx = LocalContext.current
+        val wm = remember { ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager }
         val throttled = remember(prefs.driveMode) {
-            runCatching {
-                (ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager).isScanThrottleEnabled
-            }.getOrDefault(true)
+            runCatching { wm.isScanThrottleEnabled }.getOrDefault(true)
         }
+        val bands = remember {
+            buildList {
+                add("2.4")
+                if (runCatching { wm.is5GHzBandSupported }.getOrDefault(false)) add("5")
+                if (runCatching { wm.is6GHzBandSupported }.getOrDefault(false)) add("6")
+            }.joinToString(" / ")
+        }
+        Text(
+            "This phone's Wi-Fi radio: $bands GHz" + if (bands == "2.4") "  (no 5/6 GHz — hardware)" else "",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (bands == "2.4") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 4.dp),
+        )
         Text(
             if (throttled) {
                 "Wi-Fi scan throttling: ON — Android limits scans to ~4 per 2 min. " +
