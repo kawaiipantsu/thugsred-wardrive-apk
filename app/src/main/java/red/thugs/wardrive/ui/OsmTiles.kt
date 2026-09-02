@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -53,6 +54,13 @@ class OsmTiles(context: Context) {
             inFlight.remove(k)
         }
         return null
+    }
+
+    /** Stop in-flight loads and drop the memory cache. Call when the map leaves the screen. */
+    fun shutdown() {
+        runCatching { scope.cancel() }
+        inFlight.clear()
+        mem.evictAll()
     }
 
     private fun loadFromDisk(z: Int, x: Int, y: Int): ImageBitmap? {

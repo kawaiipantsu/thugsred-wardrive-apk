@@ -19,9 +19,9 @@ object WifiInfo {
     /** 2, 5 or 6 (GHz), or 0 if unknown. */
     fun band(freqMhz: Int?): Int = when (freqMhz) {
         null -> 0
-        in 2400..2500 -> 2
-        in 4900..5900 -> 5
-        in 5925..7125 -> 6
+        in 2401..2500 -> 2
+        in 4901..5899 -> 5
+        in 5900..7125 -> 6
         else -> 0
     }
 

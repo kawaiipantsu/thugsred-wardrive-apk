@@ -87,6 +87,7 @@ fun MapScreen(
     val measurer = rememberTextMeasurer()
     val ctx = LocalContext.current
     val tiles = remember { OsmTiles(ctx) }
+    androidx.compose.runtime.DisposableEffect(tiles) { onDispose { tiles.shutdown() } }
 
     val located = remember(points) { points.filter { it.hasFix } }
     val bounds = remember(located, track, current) { MapBounds.of(located, track, current) }
@@ -110,9 +111,10 @@ fun MapScreen(
 
     // Follow mode keeps the current fix centred without disturbing the zoom.
     LaunchedEffect(current, follow) {
-        if (follow && current != null) {
-            centerLat = current.first
-            centerLon = current.second
+        val c = current
+        if (follow && c != null && c.first.isFinite() && c.second.isFinite() && (c.first != 0.0 || c.second != 0.0)) {
+            centerLat = c.first
+            centerLon = c.second
             if (zoom.isNaN()) zoom = 16.0
         }
     }
@@ -160,12 +162,14 @@ fun MapScreen(
                         detectTapGestures(onDoubleTap = { userMoved = false })
                     },
             ) {
-                if (zoom.isNaN()) return@Canvas
+                if (!zoom.isFinite() || !centerLat.isFinite() || !centerLon.isFinite()) return@Canvas
+                if (size.width < 1f || size.height < 1f) return@Canvas
                 tileTick // read so tile arrivals trigger a redraw
 
                 fun sx(lon: Double) = (size.width / 2 + (lonToWorldX(lon, zoom) - lonToWorldX(centerLon, zoom))).toFloat()
                 fun sy(lat: Double) = (size.height / 2 + (latToWorldY(lat, zoom) - latToWorldY(centerLat, zoom))).toFloat()
 
+              try {
                 if (tilesEnabled) {
                     drawTiles(tiles, zoom, centerLat, centerLon, DARK_TILE_FILTER) { tileTick++ }
                     // Light scrim to settle the darkened basemap into the palette.
@@ -214,6 +218,9 @@ fun MapScreen(
 
                 drawScaleBar(measurer, zoom, centerLat, cs.onSurface, cs.surface.copy(alpha = 0.7f))
                 drawNorthArrow(measurer, cs.onSurface, cs.surface.copy(alpha = 0.7f), topInsetPx = topInset.toPx())
+              } catch (_: Throwable) {
+                // A transient bad projection state must never take the app down.
+              }
             }
         }
 
@@ -235,18 +242,9 @@ fun MapScreen(
                 Text(if (tilesEnabled) "Plot" else "Tiles")
             }
             Spacer(Modifier.width(6.dp))
-            FilledTonalButton(
-                onClick = onToggleFollow,
-                contentPadding = CompactPadding,
-                colors = if (follow) {
-                    androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
-                        containerColor = cs.primary,
-                        contentColor = cs.onPrimary,
-                    )
-                } else {
-                    androidx.compose.material3.ButtonDefaults.filledTonalButtonColors()
-                },
-            ) { Text("Loc") }
+            FilledTonalButton(onClick = onToggleFollow, contentPadding = CompactPadding) {
+                Text(if (follow) "Loc ●" else "Loc", color = if (follow) cs.primary else Color.Unspecified)
+            }
             Spacer(Modifier.width(6.dp))
             FilledTonalButton(onClick = { userMoved = false }, contentPadding = CompactPadding) { Text("Fit") }
         }
@@ -410,9 +408,11 @@ private fun DrawScope.drawGraticule(
         step >= 0.001 -> 4
         else -> 5
     }
+    if (step <= 0.0 || !step.isFinite()) return
+    var guard = 0
     val lonStart = floor((centerLon - 180.0 / 2.0.pow(zoom - 2)) / step) * step
     var lon = lonStart
-    while (sx(lon) < size.width + 1) {
+    while (sx(lon) < size.width + 1 && guard++ < 500) {
         val x = sx(lon)
         if (x >= -1) {
             drawLine(line, Offset(x, 0f), Offset(x, size.height), strokeWidth = 1f)
@@ -420,9 +420,10 @@ private fun DrawScope.drawGraticule(
         }
         lon += step
     }
+    guard = 0
     val latStart = floor((centerLat - 90.0) / step) * step
     var lat = latStart
-    while (lat < 85.0) {
+    while (lat < 85.0 && guard++ < 2000) {
         val y = sy(lat)
         if (y in -1f..(size.height + 1f)) {
             drawLine(line, Offset(0f, y), Offset(size.width, y), strokeWidth = 1f)
@@ -501,6 +502,10 @@ private class MapBounds(val minLat: Double, val maxLat: Double, val minLon: Doub
             var maxLon = -Double.MAX_VALUE
             var any = false
             fun acc(lat: Double, lon: Double) {
+                // Skip non-finite and the 0,0 "no satellite lock" artefact.
+                if (!lat.isFinite() || !lon.isFinite()) return
+                if (lat == 0.0 && lon == 0.0) return
+                if (lat !in -90.0..90.0 || lon !in -180.0..180.0) return
                 any = true
                 if (lat < minLat) minLat = lat
                 if (lat > maxLat) maxLat = lat

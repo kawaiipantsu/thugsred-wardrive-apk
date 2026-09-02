@@ -8,6 +8,7 @@ import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import red.thugs.wardrive.data.Observation
 import red.thugs.wardrive.data.RadioKind
 import red.thugs.wardrive.location.LocationProvider
@@ -43,10 +44,19 @@ class WifiScanner(
         }
     }
 
+    private var lastStartScan = 0L
+
     private val nudge = object : Runnable {
         override fun run() {
             if (!running) return
-            if (driveMode || !powerSaving) {
+            // Always ask for a full (all-band) scan on a cadence — even when
+            // stationary. Skipping it leaves getScanResults() returning the OS's
+            // own connectivity scans, which are biased to the connected band and
+            // often miss 5/6 GHz. Respect Android's throttle (~4 per 2 min): never
+            // call startScan() more than once per MIN_SCAN_GAP_MS.
+            val now = SystemClock.elapsedRealtime()
+            if (now - lastStartScan >= MIN_SCAN_GAP_MS) {
+                lastStartScan = now
                 @Suppress("DEPRECATION")
                 runCatching { wifi.startScan() }
             }
@@ -90,6 +100,8 @@ class WifiScanner(
             powerSaving -> NUDGE_IDLE_MS
             else -> NUDGE_MOVING_MS
         }
+        // A fresh startScan() at the next nudge, so a mode change takes effect promptly.
+        lastStartScan = 0L
     }
 
     private fun ingest() {
@@ -135,8 +147,12 @@ class WifiScanner(
     }
 
     private companion object {
-        const val NUDGE_DRIVE_MS = 10_000L
-        const val NUDGE_MOVING_MS = 25_000L
-        const val NUDGE_IDLE_MS = 90_000L
+        /** Read the cache this often (broadcasts also drive updates). */
+        const val NUDGE_DRIVE_MS = 8_000L
+        const val NUDGE_MOVING_MS = 15_000L
+        const val NUDGE_IDLE_MS = 45_000L
+
+        /** Min spacing between our own startScan() calls — under Android's ~4/2min throttle. */
+        const val MIN_SCAN_GAP_MS = 32_000L
     }
 }

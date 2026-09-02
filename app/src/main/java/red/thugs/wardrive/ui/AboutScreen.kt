@@ -117,7 +117,9 @@ fun AboutScreen(modifier: Modifier = Modifier) {
 
         Section(
             "Known limits",
-            "• Android throttles Wi-Fi scans, so results refresh every 20–90 s, not continuously.\n" +
+            "• Android throttles Wi-Fi scans (~4 per 2 min), so results refresh every 15–45 s. 5/6 GHz " +
+                "APs only appear after a full scan the OS grants — a few OEMs also limit 5 GHz scanning on " +
+                "battery or with Wi-Fi power-saving on; disable that for a drive.\n" +
                 "• An observation is only recorded with a fresh GPS fix; the 0,0 no-lock artefact is dropped.\n" +
                 "• Wi-Fi client detection needs monitor mode and is not possible on a stock device.\n" +
                 "• The password is kept only if you tick “Stay signed in on this device” — then it is stored encrypted (Android Keystore), device-local, and never leaves the phone except to sign in to your server. “Forget saved login” wipes it. Otherwise only the issued ingest token is kept.",

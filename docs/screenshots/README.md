@@ -11,7 +11,9 @@ fed sample data from `app/src/test/java/red/thugs/wardrive/screenshots/Fakes.kt`
 | `list_empty.png` | Scanning, waiting for the first GPS fix |
 | `about.png` | About page (project overview + optimise-your-phone checklist) |
 
-Regenerate after a UI change:
+See `contrib/publish-wiki.sh` to mirror these pages to the GitHub Wiki.
+
+Regenerate screenshots after a UI change:
 
 ```bash
 ./gradlew :app:recordRoborazziDebug     # rewrite these PNGs
