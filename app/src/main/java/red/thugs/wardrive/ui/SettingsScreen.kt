@@ -17,9 +17,13 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import android.content.Context
+import android.net.wifi.WifiManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import red.thugs.wardrive.BuildConfig
@@ -65,6 +69,23 @@ fun SettingsScreen(
         ToggleRow("Haptic on new device", "Short tick the first time a device is seen.", prefs.newDeviceHaptic) {
             prefs.newDeviceHaptic = it; onChanged()
         }
+        val ctx = LocalContext.current
+        val throttled = remember(prefs.driveMode) {
+            runCatching {
+                (ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager).isScanThrottleEnabled
+            }.getOrDefault(true)
+        }
+        Text(
+            if (throttled) {
+                "Wi-Fi scan throttling: ON — Android limits scans to ~4 per 2 min. " +
+                    "Turn it off in Developer options → “Wi-Fi scan throttling” and the app scans much faster."
+            } else {
+                "Wi-Fi scan throttling: OFF — high-rate scan mode is active."
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = if (throttled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(vertical = 4.dp),
+        )
 
         SectionLabel("Units")
         val options = listOf("metric" to "Metric", "imperial" to "Imperial")

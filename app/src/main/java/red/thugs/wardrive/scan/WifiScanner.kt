@@ -38,6 +38,17 @@ class WifiScanner(
     @Volatile private var driveMode = false
     @Volatile private var nudgeMs = NUDGE_MOVING_MS
 
+    /**
+     * Whether the OS is rate-limiting `startScan()` (~4 per 2 min). Default off in
+     * Developer options → "Wi-Fi scan throttling"; when a user has turned it off
+     * (as the optimise guide suggests) we scan much faster.
+     */
+    @Volatile private var throttled = true
+    private var lastThrottleCheck = 0L
+
+    /** True when scan throttling is disabled on the device and we're scanning at the fast cadence. */
+    val highRate: Boolean get() = !throttled
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action == WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) ingest()
@@ -46,16 +57,27 @@ class WifiScanner(
 
     private var lastStartScan = 0L
 
+    private fun refreshThrottle() {
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastThrottleCheck < THROTTLE_RECHECK_MS && lastThrottleCheck != 0L) return
+        lastThrottleCheck = now
+        val was = throttled
+        // isScanThrottleEnabled() is API 31+; minSdk is 35 so it's always here.
+        throttled = runCatching { wifi.isScanThrottleEnabled }.getOrDefault(true)
+        if (throttled != was) recomputeNudge()
+    }
+
     private val nudge = object : Runnable {
         override fun run() {
             if (!running) return
+            refreshThrottle()
             // Always ask for a full (all-band) scan on a cadence — even when
             // stationary. Skipping it leaves getScanResults() returning the OS's
             // own connectivity scans, which are biased to the connected band and
-            // often miss 5/6 GHz. Respect Android's throttle (~4 per 2 min): never
-            // call startScan() more than once per MIN_SCAN_GAP_MS.
+            // often miss 5/6 GHz. When throttling is on, stay under ~4/2 min.
+            val gap = if (throttled) THROTTLED_GAP_MS else UNTHROTTLED_GAP_MS
             val now = SystemClock.elapsedRealtime()
-            if (now - lastStartScan >= MIN_SCAN_GAP_MS) {
+            if (now - lastStartScan >= gap) {
                 lastStartScan = now
                 @Suppress("DEPRECATION")
                 runCatching { wifi.startScan() }
@@ -68,6 +90,7 @@ class WifiScanner(
     fun start() {
         if (running) return
         running = true
+        refreshThrottle()
         appContext.registerReceiver(
             receiver,
             IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
@@ -96,9 +119,9 @@ class WifiScanner(
 
     private fun recomputeNudge() {
         nudgeMs = when {
-            driveMode -> NUDGE_DRIVE_MS
+            driveMode -> if (throttled) NUDGE_DRIVE_MS else NUDGE_DRIVE_FAST_MS
             powerSaving -> NUDGE_IDLE_MS
-            else -> NUDGE_MOVING_MS
+            else -> if (throttled) NUDGE_MOVING_MS else NUDGE_MOVING_FAST_MS
         }
         // A fresh startScan() at the next nudge, so a mode change takes effect promptly.
         lastStartScan = 0L
@@ -152,7 +175,14 @@ class WifiScanner(
         const val NUDGE_MOVING_MS = 15_000L
         const val NUDGE_IDLE_MS = 45_000L
 
-        /** Min spacing between our own startScan() calls — under Android's ~4/2min throttle. */
-        const val MIN_SCAN_GAP_MS = 32_000L
+        /** Faster cadence when the device has scan throttling turned off. */
+        const val NUDGE_DRIVE_FAST_MS = 3_000L
+        const val NUDGE_MOVING_FAST_MS = 6_000L
+
+        /** Min spacing between our own startScan() calls. */
+        const val THROTTLED_GAP_MS = 32_000L    // under Android's ~4 per 2 min
+        const val UNTHROTTLED_GAP_MS = 2_500L   // throttling off — go fast
+
+        const val THROTTLE_RECHECK_MS = 60_000L
     }
 }

@@ -110,7 +110,7 @@ class ScanService : Service() {
                     app.driveMode.value -> " · drive"
                     app.powerSaving.value -> " · idle"
                     else -> ""
-                }
+                } + if (wifi.highRate) " · fast scan" else ""
                 notify(
                     "WiFi ${c.wifiAp} · BT ${c.btClassic} · BLE ${c.btLe} · $s sightings" +
                         (if (app.location.current() == null) " · no GPS fix" else "") + mode,

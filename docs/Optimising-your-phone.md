@@ -20,6 +20,10 @@ not to fight.
 - [ ] **Location on, high accuracy.** Settings → Location → on. Settings →
       Location → Location services → **Google Location Accuracy** on. Do **not**
       use "battery saving" location mode.
+- [ ] **Turn OFF "Wi-Fi scan throttling".** Developer options → *Wi-Fi scan
+      throttling* (or `adb shell settings put global wifi_scan_throttle_enabled 0`).
+      Stock Android caps scans at ~4 per 2 minutes; with it off the app switches
+      to **high-rate scan mode** on its own (Settings shows the current state).
 - [ ] **Enable "WiFi scanning" and "Bluetooth scanning".** Settings → Location →
       WiFi & Bluetooth scanning — turn **both** on. This is what keeps the OS
       scanning even when the WiFi/BT toggles look "off", and the app leans on it.
