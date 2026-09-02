@@ -86,6 +86,43 @@ class ScreenshotTest {
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h1400dp-420dpi")
+    fun stats() {
+        captureRoboImage("../docs/screenshots/stats.png") {
+            WardriveTheme(darkTheme = true) {
+                WardriveScaffold(
+                    state = WardriveUiState(
+                        screen = Screen.STATS,
+                        observations = obs,
+                        counts = Fakes.counts(obs),
+                        scanning = true,
+                        growth = Fakes.growth(),
+                    ),
+                    actions = WardriveActions(),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun scope() {
+        captureRoboImage("../docs/screenshots/scope.png") {
+            WardriveTheme(darkTheme = true) {
+                WardriveScaffold(
+                    state = WardriveUiState(
+                        screen = Screen.SCOPE,
+                        observations = obs,
+                        counts = Fakes.counts(obs),
+                        scanning = true,
+                        congestion = Fakes.congestion(),
+                    ),
+                    actions = WardriveActions(),
+                )
+            }
+        }
+    }
+
+    @Test
     @Config(qualifiers = "w411dp-h2600dp-420dpi")
     fun about() {
         captureRoboImage("../docs/screenshots/about.png") {

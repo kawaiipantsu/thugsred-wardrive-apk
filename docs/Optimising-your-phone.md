@@ -63,7 +63,9 @@ You don't need to micro-manage these:
 - **Passive WiFi.** It consumes the OS's own periodic scans; the active nudge is
   infrequent and pauses when stationary. (This is also why results refresh every
   20–90 s rather than continuously — Android throttles `startScan()`.)
-- **Local map.** Drawn on-device; OpenStreetMap tiles are opt-in (the *Tiles* button) and cached, off by default.
+- **Local map.** Drawn on-device; OpenStreetMap tiles are cached and can be turned off (*Tiles* button / Settings) for a data-free drive.
+- **Crash-safe.** The session CSV is written as you go, so a kill mid-drive costs nothing.
+- **Keep-screen-on** for the Map is opt-in (Settings) — use it with a mount, skip it otherwise and let the screen sleep.
 - **GPS every ~2 s**, not as fast as the chipset allows.
 - **Wake lock** is held only while a session is running, for screen-off scanning.
 

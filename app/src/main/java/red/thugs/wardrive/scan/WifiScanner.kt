@@ -104,9 +104,20 @@ class WifiScanner(
                     altitudeM = if (fix.hasAltitude()) fix.altitude else null,
                     accuracyM = if (fix.hasAccuracy()) fix.accuracy.toDouble() else null,
                     timestampMs = now,
+                    channelWidthMhz = widthMhz(r.channelWidth),
+                    centerFreqMhz = r.centerFreq0.takeIf { it > 0 },
                 ),
             )
         }
+    }
+
+    private fun widthMhz(channelWidth: Int): Int = when (channelWidth) {
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_40MHZ -> 40
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ -> 80
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_160MHZ -> 160
+        android.net.wifi.ScanResult.CHANNEL_WIDTH_80MHZ_PLUS_MHZ -> 160
+        5 -> 320 // CHANNEL_WIDTH_320MHZ (API 33+); literal avoids a hard dep
+        else -> 20
     }
 
     private companion object {

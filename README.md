@@ -51,24 +51,33 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/screenshots/list.png" alt="Live session list"><br/><sub><b>Live list</b> — one row per device, footer counts</sub></td>
-    <td width="33%"><img src="docs/screenshots/map.png" alt="Map"><br/><sub><b>Map</b> — points + path, graticule / scale (OSM tiles optional)</sub></td>
+    <td width="33%"><img src="docs/screenshots/list.png" alt="Live session list"><br/><sub><b>List</b> — filter / sort / search, tap for detail</sub></td>
+    <td width="33%"><img src="docs/screenshots/map.png" alt="Map"><br/><sub><b>Map</b> — points + path, graticule / scale, optional OSM tiles</sub></td>
+    <td width="33%"><img src="docs/screenshots/stats.png" alt="Stats"><br/><sub><b>Stats</b> — channels, bands, encryption, rate</sub></td>
+  </tr>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/scope.png" alt="Scope"><br/><sub><b>Scope</b> — live channel congestion + waterfall</sub></td>
     <td width="33%"><img src="docs/screenshots/list_empty.png" alt="Scanning, no results yet"><br/><sub><b>Scanning</b> — waiting for a GPS fix</sub></td>
+    <td width="33%"><a href="docs/screenshots/about.png">About</a> — project + phone-optimise checklist (tall scroll)</td>
   </tr>
 </table>
 
-<sub>Rendered from the real Compose UI on the JVM (Robolectric + Roborazzi) with sample data — `./gradlew :app:recordRoborazziDebug`. The full <a href="docs/screenshots/about.png">About screen</a> is a tall scroll.</sub>
+<sub>Rendered from the real Compose UI on the JVM (Robolectric + Roborazzi) with sample data — `./gradlew :app:recordRoborazziDebug`.</sub>
 
 ## ✨ Features
 
 - **Scan** WiFi access points + Bluetooth Classic + BLE, each sighting stamped with a GPS fix.
-- **Live list** — one row per device (SSID/name, BSSID, channel, signal, last seen).
-- **Map** — scanned points + driving path on a Compose `Canvas` (Web Mercator); pinch/pan/fit. Works **fully offline** with a lat/long graticule, scale bar and north arrow; **OpenStreetMap tiles are an opt-in toggle** (no API key, cached, off by default).
-- **Footer counts** — WiFi APs · BT · BLE · GPS fixes · distinct devices, per run.
+- **Quick nav** — a `List · Map · Stats · Scope` strip under the header.
+- **List** — one row per device; filter (WiFi/BT/BLE/new), sort (recent/strongest/SSID/channel), text search, tap a row for a detail sheet (all sightings, signal graph, distance, copy BSSID, open on the site).
+- **Map** — points + driving path on a Compose `Canvas` (Web Mercator); pinch/pan/fit, follow-me, GPS accuracy ring. Offline by default (lat/long graticule, scale bar, N arrow); **OpenStreetMap tiles are opt-in** (no API key, cached, darkened to match).
+- **Stats** — APs per 2.4/5 GHz channel, band split, encryption breakdown, signal histogram, discovery-rate sparkline, least-busy channel.
+- **Scope** — a live *channel-congestion* view (beacon-derived, not RF noise): every AP drawn at its real channel width so overlap is visible, plus a rolling waterfall of per-frequency density.
+- **Crash-safe logging** — the session CSV is written to disk as you drive, so a kill or crash mid-run doesn't lose it.
 - **Go Live** — signs in, mints an ingest token, streams WiFi observations to `POST /api/v1/ingest` in batches with back-off; nothing re-sent once answered.
-- **Upload** — exports the session to WiGLE CSV and posts it to the moderation queue; saved sessions can be uploaded later.
+- **Upload / Share** — WiGLE CSV to the moderation queue, or straight to the Android share sheet; saved sessions upload later.
 - **Battery** — 1 Hz coalesced state, movement-aware scan cadence, batched BLE, passive WiFi scans, session-scoped wake lock.
-- **Stay signed in** (opt-in checkbox) stores your username + password encrypted via the Android Keystore, device-local; *Forget saved login* wipes it. Otherwise the password is used once and only the issued ingest token is kept. With a token saved, **Go Live** starts with one tap.
+- **Stay signed in** (opt-in) stores username + password encrypted via the Android Keystore, device-local; *Forget saved login* wipes it. With a token saved, **Go Live** starts with one tap.
+- **Settings** — tiles, follow-me, keep-screen-on (Map), new-device haptic, units.
 
 ## 📲 Install
 
@@ -90,7 +99,7 @@ Full guide: **[docs/Using-the-App.md](docs/Using-the-App.md)**.
 
 - Grant **Location — all the time**, Nearby WiFi devices, and Nearby devices / Bluetooth.
 - **Start scan** runs a foreground service so a drive survives the screen turning off.
-- Menu (⋮): Go Live · Stop live ingest · Upload current session · Saved sessions… · Export CSV · Live list · Map · About.
+- Switch views with the `List · Map · Stats · Scope` strip; the ⋮ menu holds the actions (Go Live, Upload, Share CSV, Saved sessions, Settings, About).
 - WiFi *client* capture needs monitor mode and isn't possible on a stock device — Bluetooth devices are the "clients" you collect alongside APs.
 
 ## 🔋 Battery & phone setup
@@ -121,11 +130,14 @@ Screenshot tests (JVM, no emulator) live in `app/src/test/` — `./gradlew :app:
 app/src/main/java/red/thugs/wardrive/
   WardriveApp.kt            process-wide singletons
   MainActivity.kt           permissions + Compose host
-  data/     Observation, SessionStore (coalesced + track), WigleCsvWriter, Prefs, Geo
-  scan/     WifiScanner, BluetoothScanner, ScanService (foreground + power tuning)
+  data/     Observation, SessionStore (coalesced + track + crash-safe CSV + congestion/growth
+            history), WigleCsvWriter, WifiInfo, Prefs, Geo
+  scan/     WifiScanner, BluetoothScanner, ScanService (foreground + power tuning + haptic)
   location/ LocationProvider (isMoving)
   net/      WardriveClient (login/token/ingest/upload), LiveIngestManager
-  ui/       MainScreen, MapScreen + OsmTiles, CredentialsDialog, AboutScreen, MainViewModel, AppIcons, theme/
+  ui/       MainScreen (WardriveScaffold + quick-nav), MapScreen + OsmTiles, StatsScreen,
+            ScopeScreen, ListView, ObservationDetailSheet, SettingsScreen, CredentialsDialog,
+            AboutScreen, MainViewModel, AppIcons, theme/
 ```
 
 ## 🌐 The Wardrive project

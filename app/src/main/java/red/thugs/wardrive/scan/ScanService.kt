@@ -78,6 +78,7 @@ class ScanService : Service() {
         app.setScanning(true)
         handler.post(tuning)
 
+        var lastTotal = -1
         combine(app.session.counts, app.session.sightingCount) { c, s -> c to s }
             .onEach { (c, s) ->
                 val idle = if (app.powerSaving.value) " · idle" else ""
@@ -85,8 +86,17 @@ class ScanService : Service() {
                     "WiFi ${c.wifiAp} · BT ${c.btClassic} · BLE ${c.btLe} · $s sightings" +
                         (if (app.location.current() == null) " · no GPS fix" else "") + idle,
                 )
+                if (lastTotal in 0 until c.total && app.prefs.newDeviceHaptic) tick()
+                lastTotal = c.total
             }
             .launchIn(scope)
+    }
+
+    private fun tick() {
+        val vib = (getSystemService(Context.VIBRATOR_SERVICE) as? android.os.Vibrator) ?: return
+        runCatching {
+            vib.vibrate(android.os.VibrationEffect.createOneShot(20, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+        }
     }
 
     /** Every [TUNE_MS] decide whether we are moving and set the radio cadence. */

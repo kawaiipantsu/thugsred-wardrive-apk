@@ -44,11 +44,23 @@ data class Observation(
     val accuracyM: Double?,
     /** Epoch millis of the fix this sighting was tied to. */
     val timestampMs: Long,
+    /** WiFi channel width in MHz (20/40/80/160/320), for the Scope overlap view. */
+    val channelWidthMhz: Int? = null,
+    /** WiFi segment-0 centre frequency in MHz (differs from [frequencyMhz] for wide channels). */
+    val centerFreqMhz: Int? = null,
 ) {
     /** True once we have a real position (the server rejects the 0,0 no-fix artefact). */
     val hasFix: Boolean get() = (lat != 0.0 || lon != 0.0) && lat in -90.0..90.0 && lon in -180.0..180.0
 
     val isWifi: Boolean get() = kind == RadioKind.WIFI_AP
+
+    /** Best guess at the frequency span this AP occupies, as [lowMhz, highMhz]. */
+    val freqSpan: Pair<Int, Int>?
+        get() {
+            val centre = centerFreqMhz ?: frequencyMhz ?: return null
+            val half = (channelWidthMhz ?: 20) / 2
+            return (centre - half) to (centre + half)
+        }
 
     companion object {
         fun normaliseBssid(raw: String): String =

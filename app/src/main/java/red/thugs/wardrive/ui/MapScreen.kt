@@ -79,6 +79,9 @@ fun MapScreen(
     modifier: Modifier = Modifier,
     tilesEnabled: Boolean = false,
     onToggleTiles: () -> Unit = {},
+    accuracyM: Float? = null,
+    follow: Boolean = false,
+    onToggleFollow: () -> Unit = {},
 ) {
     val cs = MaterialTheme.colorScheme
     val measurer = rememberTextMeasurer()
@@ -99,10 +102,19 @@ fun MapScreen(
     LaunchedEffect(bounds, canvas, userMoved) {
         val b = bounds ?: return@LaunchedEffect
         if (canvas.width == 0 || canvas.height == 0) return@LaunchedEffect
-        if (userMoved && !zoom.isNaN()) return@LaunchedEffect
+        if ((userMoved || follow) && !zoom.isNaN()) return@LaunchedEffect
         centerLat = (b.minLat + b.maxLat) / 2
         centerLon = (b.minLon + b.maxLon) / 2
         zoom = fitZoom(b, canvas)
+    }
+
+    // Follow mode keeps the current fix centred without disturbing the zoom.
+    LaunchedEffect(current, follow) {
+        if (follow && current != null) {
+            centerLat = current.first
+            centerLon = current.second
+            if (zoom.isNaN()) zoom = 16.0
+        }
     }
 
     val topInset = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
@@ -128,6 +140,7 @@ fun MapScreen(
                         detectTransformGestures { centroid, pan, gestureZoom, _ ->
                             if (zoom.isNaN()) return@detectTransformGestures
                             userMoved = true
+                            if (follow) onToggleFollow() // a manual pan cancels follow
                             // Pan: shift centre opposite the drag.
                             centerLon = worldXToLon(lonToWorldX(centerLon, zoom) - pan.x, zoom)
                             centerLat = worldYToLat(latToWorldY(centerLat, zoom) - pan.y, zoom)
@@ -154,9 +167,9 @@ fun MapScreen(
                 fun sy(lat: Double) = (size.height / 2 + (latToWorldY(lat, zoom) - latToWorldY(centerLat, zoom))).toFloat()
 
                 if (tilesEnabled) {
-                    drawTiles(tiles, zoom, centerLat, centerLon) { tileTick++ }
-                    // Dark scrim so the bright basemap sits under the app's palette.
-                    drawRect(cs.background.copy(alpha = 0.34f))
+                    drawTiles(tiles, zoom, centerLat, centerLon, DARK_TILE_FILTER) { tileTick++ }
+                    // Light scrim to settle the darkened basemap into the palette.
+                    drawRect(cs.background.copy(alpha = 0.18f))
                 } else {
                     drawGraticule(measurer, zoom, centerLat, centerLon, cs.outline.copy(alpha = 0.28f), cs.onSurfaceVariant.copy(alpha = 0.55f))
                 }
@@ -187,6 +200,13 @@ fun MapScreen(
                 // Current position
                 current?.let { (lat, lon) ->
                     val c = Offset(sx(lon), sy(lat))
+                    if (accuracyM != null && accuracyM > 0f) {
+                        val rPx = (accuracyM / metresPerPixel(centerLat, zoom)).toFloat()
+                        if (rPx in 8f..size.maxDimension) {
+                            drawCircle(cs.primary.copy(alpha = 0.10f), radius = rPx, center = c)
+                            drawCircle(cs.primary.copy(alpha = 0.35f), radius = rPx, center = c, style = Stroke(1.5f))
+                        }
+                    }
                     drawCircle(cs.primary.copy(alpha = 0.18f), radius = 16.dp.toPx(), center = c)
                     drawCircle(Color.White, radius = 6.dp.toPx(), center = c)
                     drawCircle(cs.primary, radius = 6.dp.toPx(), center = c, style = Stroke(2.dp.toPx()))
@@ -214,6 +234,19 @@ fun MapScreen(
             FilledTonalButton(onClick = onToggleTiles, contentPadding = CompactPadding) {
                 Text(if (tilesEnabled) "Plot" else "Tiles")
             }
+            Spacer(Modifier.width(6.dp))
+            FilledTonalButton(
+                onClick = onToggleFollow,
+                contentPadding = CompactPadding,
+                colors = if (follow) {
+                    androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(
+                        containerColor = cs.primary,
+                        contentColor = cs.onPrimary,
+                    )
+                } else {
+                    androidx.compose.material3.ButtonDefaults.filledTonalButtonColors()
+                },
+            ) { Text("Loc") }
             Spacer(Modifier.width(6.dp))
             FilledTonalButton(onClick = { userMoved = false }, contentPadding = CompactPadding) { Text("Fit") }
         }
@@ -262,6 +295,22 @@ private fun Dot(label: String, color: Color) {
 
 // -- Web Mercator ---------------------------------------------------------
 
+/** Ground resolution at a latitude/zoom, for the scale bar and accuracy ring. */
+private fun metresPerPixel(lat: Double, zoom: Double) =
+    156543.03392 * cos(lat * PI / 180.0) / 2.0.pow(zoom)
+
+/** "Dark map" colour filter for the bright OSM basemap: invert + per-channel trim. */
+private val DARK_TILE_FILTER = androidx.compose.ui.graphics.ColorFilter.colorMatrix(
+    androidx.compose.ui.graphics.ColorMatrix(
+        floatArrayOf(
+            -0.92f, 0.00f, 0.00f, 0f, 238f,
+            0.00f, -0.92f, 0.00f, 0f, 238f,
+            0.00f, 0.00f, -0.86f, 0f, 228f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    ),
+)
+
 private fun worldSize(zoom: Double) = 256.0 * 2.0.pow(zoom)
 
 private fun lonToWorldX(lon: Double, zoom: Double) = (lon + 180.0) / 360.0 * worldSize(zoom)
@@ -297,6 +346,7 @@ private fun DrawScope.drawTiles(
     zoom: Double,
     centerLat: Double,
     centerLon: Double,
+    colorFilter: androidx.compose.ui.graphics.ColorFilter?,
     onLoaded: () -> Unit,
 ) {
     val z = zoom.roundToInt().coerceIn(2, 19)
@@ -326,6 +376,7 @@ private fun DrawScope.drawTiles(
                 image = bmp,
                 dstOffset = IntOffset(left.roundToInt(), top.roundToInt()),
                 dstSize = IntSize(tilePx.roundToInt() + 1, tilePx.roundToInt() + 1),
+                colorFilter = colorFilter,
             )
         } else {
             drawRect(Color(0xFF1B2130), topLeft = Offset(left, top), size = Size(tilePx, tilePx))
@@ -402,7 +453,7 @@ private fun DrawScope.drawScaleBar(
         "${niceM.toLong()} m"
     }
     val bx = 16f
-    val by = size.height - 148f
+    val by = size.height - 178f
     drawRect(bg, topLeft = Offset(bx - 6f, by - 14f), size = Size(barPx + 52f, 30f))
     drawLine(fg, Offset(bx, by + 6f), Offset(bx + barPx, by + 6f), strokeWidth = 3f)
     drawLine(fg, Offset(bx, by), Offset(bx, by + 12f), strokeWidth = 3f)

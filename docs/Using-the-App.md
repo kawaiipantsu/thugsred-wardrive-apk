@@ -55,29 +55,58 @@ later):
   drive survives the screen turning off. Stop from the button or the
   notification.
 
-## Menu (⋮)
+## Views — the quick-nav strip
+
+Under the header: **List · Map · Stats · Scope**. Tap to switch.
+
+## Menu (⋮) — actions
 
 | Item | Does |
 |---|---|
-| **Go Live** | Sign in and start streaming (below) |
+| **Go Live** | Sign in and start streaming (below). With a token saved, one tap. |
 | **Stop live ingest** | Stop streaming but keep scanning |
 | **Upload current session** | Sign in, export to WiGLE CSV, post to the queue |
-| **Saved sessions…** | List previously exported CSVs; upload one later |
-| **Export CSV to storage** | Write the current session to app storage without uploading |
-| **Forget saved login** | Wipe the stored token + credentials (shown once you've signed in) |
-| **Live list** | Back to the list |
-| **Map** | The map — offline plot, optional OSM tiles |
+| **Share session CSV…** | Hand the CSV to the Android share sheet |
+| **Saved sessions…** | List session CSVs on the device; upload one later |
+| **Export CSV to storage** | Flush the current session file to app storage |
+| **Forget saved login** | Wipe the stored token + credentials (shown once signed in) |
+| **Settings** | Tiles, follow-me, keep-screen-on, haptic, units |
 | **About** | Project info + the optimise-your-phone checklist |
+
+The session CSV is written to disk **as you drive**, so a crash or the OS killing
+the app doesn't lose the run.
+
+## List
+
+Filter chips (**All / WiFi / BT / BLE / New**), a sort menu (**Recent /
+Strongest / SSID / Channel**) and a search box (SSID or BSSID). Tap a row for a
+detail sheet: every sighting, a signal-over-time graph, first/last seen,
+distance from you, **Copy BSSID**, and **Open on the site** (`/networks/<bssid>`).
 
 ## Map
 
-Reachable from the menu. Scanned points and the driving path drawn on a local
-projection. It works **fully offline** — a lat/long graticule, scale bar and north arrow instead of a basemap. The **Tiles** button turns on OpenStreetMap tiles (needs a connection the first time; tiles are then cached, and it stays off until you ask). No API key.
+Scanned points and the driving path on a Web-Mercator projection. **Offline by
+default** — a lat/long graticule, scale bar and north arrow instead of a basemap.
 
-- **Pinch** to zoom, **drag** to pan.
-- **Double-tap** or the **Fit** button to re-fit the whole session.
-- Points are coloured by radio: green = WiFi, amber = BT, red = BLE. The white
-  dot is your current position.
+- **Pinch** to zoom, **drag** to pan, **double-tap** / **Fit** to re-frame.
+- **Tiles** — OpenStreetMap raster tiles (needs a connection the first time, then
+  cached; darkened to match the app). No API key. On by default; toggle here or
+  in Settings.
+- **Loc** — follow-me: keep the map centred on your position (a manual pan turns
+  it off). A ring shows GPS accuracy.
+- Points: green = WiFi, amber = BT, red = BLE. The white dot is you.
+
+## Stats
+
+APs per 2.4 / 5 GHz channel, band split, encryption breakdown, a signal
+histogram, a discovery-rate sparkline, and the least-busy 2.4 GHz channel.
+
+## Scope
+
+A live **channel-congestion** view — *not* an RF spectrum (stock Android exposes
+no noise floor). Every AP is drawn at its real channel width so 40/80/160 MHz
+overlap and crowding are visible, with a rolling **waterfall** of per-frequency
+AP density under it. Toggle 2.4 / 5 GHz.
 
 ## Go Live
 

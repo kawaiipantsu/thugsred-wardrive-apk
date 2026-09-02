@@ -43,10 +43,32 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_REMEMBER, false)
         set(v) = sp.edit().putBoolean(K_REMEMBER, v).apply()
 
-    /** Show OpenStreetMap tiles under the map (uses data). Off by default. */
+    /** Show OpenStreetMap tiles under the map (uses data). On by default. */
     var mapTiles: Boolean
-        get() = sp.getBoolean(K_MAP_TILES, false)
+        get() = sp.getBoolean(K_MAP_TILES, true)
         set(v) = sp.edit().putBoolean(K_MAP_TILES, v).apply()
+
+    /** Keep the map centred on the current position. */
+    var mapFollow: Boolean
+        get() = sp.getBoolean(K_MAP_FOLLOW, true)
+        set(v) = sp.edit().putBoolean(K_MAP_FOLLOW, v).apply()
+
+    /** Hold the screen on while the Map view is open (car mount). */
+    var keepScreenOn: Boolean
+        get() = sp.getBoolean(K_KEEP_SCREEN_ON, false)
+        set(v) = sp.edit().putBoolean(K_KEEP_SCREEN_ON, v).apply()
+
+    /** Short haptic tick when a device is seen for the first time this session. */
+    var newDeviceHaptic: Boolean
+        get() = sp.getBoolean(K_HAPTIC, false)
+        set(v) = sp.edit().putBoolean(K_HAPTIC, v).apply()
+
+    /** "metric" or "imperial" — affects the map scale bar and distances. */
+    var units: String
+        get() = sp.getString(K_UNITS, "metric") ?: "metric"
+        set(v) = sp.edit().putString(K_UNITS, v).apply()
+
+    val imperial: Boolean get() = units == "imperial"
 
     var ingestToken: String?
         get() = sp.getString(K_TOKEN, null)?.takeIf { it.isNotBlank() }
@@ -75,6 +97,10 @@ class Prefs(context: Context) {
         const val K_PASSWORD = "password"
         const val K_REMEMBER = "remember_credentials"
         const val K_MAP_TILES = "map_tiles"
+        const val K_MAP_FOLLOW = "map_follow"
+        const val K_KEEP_SCREEN_ON = "keep_screen_on"
+        const val K_HAPTIC = "new_device_haptic"
+        const val K_UNITS = "units"
         const val K_TOKEN = "ingest_token"
     }
 }

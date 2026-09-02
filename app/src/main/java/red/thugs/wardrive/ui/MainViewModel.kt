@@ -1,6 +1,8 @@
 package red.thugs.wardrive.ui
 
 import android.app.Application
+import android.content.Intent
+import androidx.core.content.FileProvider
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.channels.Channel
@@ -15,7 +17,10 @@ import red.thugs.wardrive.net.WardriveException
 import red.thugs.wardrive.scan.ScanService
 import java.io.File
 
-enum class Screen { LIST, MAP, ABOUT }
+enum class Screen { LIST, MAP, STATS, SCOPE, ABOUT, SETTINGS }
+
+/** The four screens reachable from the quick-nav strip. */
+val QUICK_NAV_SCREENS = listOf(Screen.LIST, Screen.MAP, Screen.STATS, Screen.SCOPE)
 
 /** Which action the credentials dialog is collecting a login for. */
 enum class CredentialPurpose { GO_LIVE, UPLOAD }
@@ -34,9 +39,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val powerSaving get() = appx.powerSaving
     val liveStatus get() = appx.liveIngest.status
     val track get() = appx.session.track
+    val congestion get() = appx.session.congestion
+    val growth get() = appx.session.growth
 
     val currentLatLon = appx.location.location
         .map { it?.let { l -> l.latitude to l.longitude } }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    val currentAccuracy = appx.location.location
+        .map { it?.takeIf { l -> l.hasAccuracy() }?.accuracy }
         .stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     private val _events = Channel<String>(Channel.BUFFERED)
@@ -48,6 +59,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun toast(msg: String) {
         viewModelScope.launch { _events.send(msg) }
     }
+
+    fun toastPublic(msg: String) = toast(msg)
 
     // -- Scanning -------------------------------------------------------
 
@@ -153,6 +166,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val f = session.exportCurrentCsv()
             toast("Saved ${f.name} (${f.length()} bytes) to app storage.")
         }
+    }
+
+    /** Hand the current session's CSV to the Android share sheet. */
+    fun shareCsv() {
+        if (session.isEmpty()) {
+            toast("Nothing scanned yet.")
+            return
+        }
+        val f = session.exportCurrentCsv()
+        val uri = FileProvider.getUriForFile(appx, "${appx.packageName}.fileprovider", f)
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "text/csv"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, f.name)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        runCatching {
+            appx.startActivity(
+                Intent.createChooser(send, "Share ${f.name}").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }.onFailure { toast("No app to share the file with.") }
     }
 
     fun savedSessions(): List<File> = session.savedSessions()

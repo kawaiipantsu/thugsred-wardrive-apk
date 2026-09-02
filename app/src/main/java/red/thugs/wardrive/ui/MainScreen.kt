@@ -1,6 +1,7 @@
 package red.thugs.wardrive.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -50,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import red.thugs.wardrive.R
+import red.thugs.wardrive.data.CongestionSample
+import red.thugs.wardrive.data.GrowthPoint
 import red.thugs.wardrive.data.Observation
 import red.thugs.wardrive.data.RadioKind
 import red.thugs.wardrive.data.SessionCounts
@@ -61,7 +66,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/** Everything [WardriveScaffold] needs to draw, with no ViewModel dependency (so it renders in previews/screenshot tests). */
+/** Everything [WardriveScaffold] needs to draw, with no ViewModel dependency (renders in previews/screenshot tests). */
 data class WardriveUiState(
     val screen: Screen = Screen.LIST,
     val observations: List<Observation> = emptyList(),
@@ -72,6 +77,8 @@ data class WardriveUiState(
     val track: List<TrackPoint> = emptyList(),
     val current: Pair<Double, Double>? = null,
     val mapTiles: Boolean = false,
+    val congestion: List<CongestionSample> = emptyList(),
+    val growth: List<GrowthPoint> = emptyList(),
 )
 
 /** Callbacks the chrome fires. Default no-ops keep previews trivial. */
@@ -79,10 +86,11 @@ data class WardriveActions(
     val onGoLive: () -> Unit = {},
     val onUpload: () -> Unit = {},
     val onAbout: () -> Unit = {},
-    val onList: () -> Unit = {},
-    val onMap: () -> Unit = {},
+    val onSettings: () -> Unit = {},
+    val onSelectScreen: (Screen) -> Unit = {},
     val onSavedSessions: () -> Unit = {},
     val onExport: () -> Unit = {},
+    val onShare: () -> Unit = {},
     val onStopLive: () -> Unit = {},
     val onForgetLogin: () -> Unit = {},
     val onToggleScan: () -> Unit = {},
@@ -102,6 +110,9 @@ fun MainScreen(
     var pendingUploadFile by remember { mutableStateOf<File?>(null) }
     var showSaved by remember { mutableStateOf(false) }
     var mapTiles by remember { mutableStateOf(vm.prefs.mapTiles) }
+    var mapFollow by remember { mutableStateOf(vm.prefs.mapFollow) }
+    var settingsRev by remember { mutableIntStateOf(0) }
+    var detail by remember { mutableStateOf<Observation?>(null) }
 
     val observations by vm.session.observations.collectAsStateWithLifecycle()
     val counts by vm.session.counts.collectAsStateWithLifecycle()
@@ -111,52 +122,90 @@ fun MainScreen(
     val busy by vm.busy.collectAsStateWithLifecycle()
     val track by vm.track.collectAsStateWithLifecycle()
     val currentLatLon by vm.currentLatLon.collectAsStateWithLifecycle()
+    val currentAccuracy by vm.currentAccuracy.collectAsStateWithLifecycle()
+    val congestion by vm.congestion.collectAsStateWithLifecycle()
+    val growth by vm.growth.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        vm.events.collect { snackbar.showSnackbar(it) }
-    }
+    LaunchedEffect(Unit) { vm.events.collect { snackbar.showSnackbar(it) } }
+
+    // Keep the screen on while the Map is up, if the user asked for it.
+    KeepScreenOn(enabled = screen == Screen.MAP && vm.prefs.keepScreenOn && settingsRev >= 0)
+
+    val state = WardriveUiState(
+        screen = screen,
+        observations = observations,
+        counts = counts,
+        scanning = scanning,
+        powerSaving = powerSaving,
+        live = live,
+        track = track,
+        current = currentLatLon,
+        mapTiles = mapTiles,
+        congestion = congestion,
+        growth = growth,
+    )
+    val actions = WardriveActions(
+        onGoLive = {
+            when {
+                live.state != LiveState.OFF -> Unit
+                vm.hasSavedToken -> vm.startLiveWithSavedToken()
+                else -> credPurpose = CredentialPurpose.GO_LIVE
+            }
+        },
+        onUpload = { pendingUploadFile = null; credPurpose = CredentialPurpose.UPLOAD },
+        onAbout = { screen = Screen.ABOUT },
+        onSettings = { screen = Screen.SETTINGS },
+        onSelectScreen = { screen = it },
+        onSavedSessions = { showSaved = true },
+        onExport = { vm.exportOnly() },
+        onShare = { vm.shareCsv() },
+        onStopLive = { vm.stopLive() },
+        onForgetLogin = { vm.forgetLogin() },
+        onToggleScan = { if (scanning) vm.stopScan() else onRequestScanStart() },
+        onToggleMapTiles = { mapTiles = !mapTiles; vm.prefs.mapTiles = mapTiles },
+        showForgetLogin = vm.prefs.rememberCredentials || vm.hasSavedToken,
+    )
 
     Box(Modifier.fillMaxSize()) {
-        WardriveScaffold(
-            state = WardriveUiState(
-                screen = screen,
-                observations = observations,
-                counts = counts,
-                scanning = scanning,
-                powerSaving = powerSaving,
-                live = live,
-                track = track,
-                current = currentLatLon,
-                mapTiles = mapTiles,
-            ),
-            actions = WardriveActions(
-                onGoLive = {
-                    when {
-                        live.state != LiveState.OFF -> Unit // already streaming
-                        vm.hasSavedToken -> vm.startLiveWithSavedToken()
-                        else -> credPurpose = CredentialPurpose.GO_LIVE
-                    }
-                },
-                onUpload = { pendingUploadFile = null; credPurpose = CredentialPurpose.UPLOAD },
-                onAbout = { screen = Screen.ABOUT },
-                onList = { screen = Screen.LIST },
-                onMap = { screen = Screen.MAP },
-                onSavedSessions = { showSaved = true },
-                onExport = { vm.exportOnly() },
-                onStopLive = { vm.stopLive() },
-                onForgetLogin = { vm.forgetLogin() },
-                onToggleScan = { if (scanning) vm.stopScan() else onRequestScanStart() },
-                onToggleMapTiles = { mapTiles = !mapTiles; vm.prefs.mapTiles = mapTiles },
-                showForgetLogin = vm.prefs.rememberCredentials || vm.hasSavedToken,
-            ),
-            snackbarHost = { SnackbarHost(snackbar) },
-        )
+        WardriveScaffold(state, actions, snackbarHost = { SnackbarHost(snackbar) }) { s ->
+            when (s) {
+                Screen.SETTINGS -> SettingsScreen(
+                    prefs = vm.prefs,
+                    onChanged = {
+                        settingsRev++
+                        mapTiles = vm.prefs.mapTiles
+                    },
+                    onOpenAbout = { screen = Screen.ABOUT },
+                    onForgetLogin = { vm.forgetLogin() },
+                    onResetSession = { vm.resetSession() },
+                )
+                Screen.LIST -> Column(Modifier.fillMaxSize()) {
+                    LiveStrip(state.live)
+                    ListView(
+                        observations = state.observations,
+                        scanning = state.scanning,
+                        onRowClick = { detail = it },
+                    )
+                }
+                Screen.MAP -> Column(Modifier.fillMaxSize()) {
+                    LiveStrip(state.live)
+                    MapScreen(
+                        points = state.observations,
+                        track = state.track,
+                        current = state.current,
+                        tilesEnabled = mapTiles,
+                        onToggleTiles = { mapTiles = !mapTiles; vm.prefs.mapTiles = mapTiles },
+                        accuracyM = currentAccuracy,
+                        follow = mapFollow,
+                        onToggleFollow = { mapFollow = !mapFollow; vm.prefs.mapFollow = mapFollow },
+                    )
+                }
+                else -> DefaultScreenContent(state, actions, s)
+            }
+        }
 
         if (busy is Busy.Working) {
-            Surface(
-                color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f),
-                modifier = Modifier.fillMaxSize(),
-            ) {
+            Surface(color = MaterialTheme.colorScheme.scrim.copy(alpha = 0.55f), modifier = Modifier.fillMaxSize()) {
                 Column(
                     Modifier.fillMaxSize(),
                     verticalArrangement = Arrangement.Center,
@@ -168,6 +217,17 @@ fun MainScreen(
                 }
             }
         }
+    }
+
+    detail?.let { o ->
+        ObservationDetailSheet(
+            observation = o,
+            sightings = vm.session.sightingsFor(o.kind, o.bssid),
+            current = currentLatLon,
+            baseUrl = vm.prefs.baseUrl,
+            onDismiss = { detail = null },
+            onToast = { vm.toastPublic(it) },
+        )
     }
 
     credPurpose?.let { purpose ->
@@ -193,38 +253,38 @@ fun MainScreen(
         SavedSessionsDialog(
             files = vm.savedSessions(),
             onDismiss = { showSaved = false },
-            onUpload = { f ->
-                showSaved = false
-                pendingUploadFile = f
-                credPurpose = CredentialPurpose.UPLOAD
-            },
+            onUpload = { f -> showSaved = false; pendingUploadFile = f; credPurpose = CredentialPurpose.UPLOAD },
         )
     }
 }
 
-/** The banner + footer + FAB chrome and the current screen. Stateless. */
+/** Chrome (banner + quick-nav + footer + FAB). [screenContent] renders the current screen. */
 @Composable
 internal fun WardriveScaffold(
     state: WardriveUiState,
     actions: WardriveActions,
     snackbarHost: @Composable () -> Unit = {},
+    screenContent: @Composable (Screen) -> Unit = { DefaultScreenContent(state, actions, it) },
 ) {
     Scaffold(
         snackbarHost = snackbarHost,
         topBar = {
-            TopBanner(
-                onGoLive = actions.onGoLive,
-                onUpload = actions.onUpload,
-                onAbout = actions.onAbout,
-                onList = actions.onList,
-                onSavedSessions = actions.onSavedSessions,
-                onExport = actions.onExport,
-                onStopLive = actions.onStopLive,
-                onForgetLogin = actions.onForgetLogin,
-                onMap = actions.onMap,
-                liveActive = state.live.state != LiveState.OFF,
-                showForgetLogin = actions.showForgetLogin,
-            )
+            Column {
+                TopBanner(
+                    onGoLive = actions.onGoLive,
+                    onUpload = actions.onUpload,
+                    onAbout = actions.onAbout,
+                    onSettings = actions.onSettings,
+                    onSavedSessions = actions.onSavedSessions,
+                    onExport = actions.onExport,
+                    onShare = actions.onShare,
+                    onStopLive = actions.onStopLive,
+                    onForgetLogin = actions.onForgetLogin,
+                    liveActive = state.live.state != LiveState.OFF,
+                    showForgetLogin = actions.showForgetLogin,
+                )
+                QuickNav(state.screen, actions.onSelectScreen)
+            }
         },
         bottomBar = {
             SessionFooter(
@@ -234,40 +294,88 @@ internal fun WardriveScaffold(
             )
         },
         floatingActionButton = {
-            if (state.screen != Screen.ABOUT) {
+            if (state.screen in QUICK_NAV_SCREENS) {
                 ExtendedFloatingActionButton(
                     onClick = actions.onToggleScan,
+                    containerColor = if (state.scanning) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    elevation = FloatingActionButtonDefaults.elevation(),
                     icon = { Icon(if (state.scanning) AppIcons.Stop else Icons.Filled.PlayArrow, null) },
                     text = { Text(if (state.scanning) "Stop" else "Start scan") },
                 )
             }
         },
     ) { pad ->
-        Box(Modifier.padding(pad).fillMaxSize()) {
-            when (state.screen) {
-                Screen.ABOUT -> AboutScreen()
-                Screen.MAP -> Column(Modifier.fillMaxSize()) {
-                    LiveStrip(state.live)
-                    MapScreen(
-                        points = state.observations,
-                        track = state.track,
-                        current = state.current,
-                        tilesEnabled = state.mapTiles,
-                        onToggleTiles = actions.onToggleMapTiles,
+        Box(Modifier.padding(pad).fillMaxSize()) { screenContent(state.screen) }
+    }
+}
+
+@Composable
+internal fun DefaultScreenContent(state: WardriveUiState, actions: WardriveActions, screen: Screen) {
+    when (screen) {
+        Screen.ABOUT -> AboutScreen()
+        Screen.SETTINGS -> Box(Modifier.fillMaxSize().padding(24.dp)) { Text("Settings") }
+        Screen.STATS -> Column(Modifier.fillMaxSize()) {
+            LiveStrip(state.live)
+            StatsScreen(state.observations, state.growth, state.counts)
+        }
+        Screen.SCOPE -> Column(Modifier.fillMaxSize()) {
+            LiveStrip(state.live)
+            ScopeScreen(state.observations, state.congestion)
+        }
+        Screen.MAP -> Column(Modifier.fillMaxSize()) {
+            LiveStrip(state.live)
+            MapScreen(
+                points = state.observations,
+                track = state.track,
+                current = state.current,
+                tilesEnabled = state.mapTiles,
+                onToggleTiles = actions.onToggleMapTiles,
+            )
+        }
+        Screen.LIST -> Column(Modifier.fillMaxSize()) {
+            LiveStrip(state.live)
+            ListView(state.observations, state.scanning, onRowClick = {})
+        }
+    }
+}
+
+@Composable
+private fun QuickNav(current: Screen, onSelect: (Screen) -> Unit) {
+    val labels = mapOf(Screen.LIST to "List", Screen.MAP to "Map", Screen.STATS to "Stats", Screen.SCOPE to "Scope")
+    Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
+        Row(Modifier.fillMaxWidth()) {
+            QUICK_NAV_SCREENS.forEach { s ->
+                val sel = s == current
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .clickable { onSelect(s) }
+                        .background(
+                            if (sel) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                            else androidx.compose.ui.graphics.Color.Transparent,
+                        )
+                        .padding(vertical = 9.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        labels.getValue(s),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                        color = if (sel) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                }
-                Screen.LIST -> Column(Modifier.fillMaxSize()) {
-                    LiveStrip(state.live)
-                    if (state.observations.isEmpty()) {
-                        EmptyState(state.scanning)
-                    } else {
-                        LazyColumn(Modifier.fillMaxSize()) {
-                            items(state.observations, key = { it.kind.name + it.bssid }) { ObservationRow(it) }
-                        }
-                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun KeepScreenOn(enabled: Boolean) {
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(enabled) {
+        view.keepScreenOn = enabled
+        onDispose { view.keepScreenOn = false }
     }
 }
 
@@ -309,8 +417,7 @@ private fun LiveStrip(live: LiveStatus) {
             Icon(AppIcons.Podcasts, null, tint = color, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                "LIVE · sent ${live.sentOk} · queued ${live.pending}" +
-                    (live.detail?.let { " · $it" } ?: ""),
+                "LIVE · sent ${live.sentOk} · queued ${live.pending}" + (live.detail?.let { " · $it" } ?: ""),
                 style = MaterialTheme.typography.labelMedium,
             )
         }
@@ -318,13 +425,13 @@ private fun LiveStrip(live: LiveStatus) {
 }
 
 @Composable
-fun ObservationRow(o: Observation) {
+fun ObservationRow(o: Observation, onClick: (() -> Unit)? = null) {
     val (icon, tint) = when (o.kind) {
         RadioKind.WIFI_AP -> AppIcons.Wifi to MaterialTheme.colorScheme.primary
         RadioKind.BT_CLASSIC -> AppIcons.Bluetooth to MaterialTheme.colorScheme.secondary
         RadioKind.BT_LE -> AppIcons.Bluetooth to MaterialTheme.colorScheme.tertiary
     }
-    Column {
+    Column(Modifier.then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -381,18 +488,18 @@ fun SessionFooter(wifi: Int, bt: Int, ble: Int, withFix: Int, devices: Int, powe
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Stat("WiFi", wifi, AppIcons.Wifi, MaterialTheme.colorScheme.primary)
-                Stat("BT", bt, AppIcons.Bluetooth, MaterialTheme.colorScheme.secondary)
-                Stat("BLE", ble, AppIcons.Bluetooth, MaterialTheme.colorScheme.tertiary)
-                Stat("Fixes", withFix, Icons.Filled.PlayArrow, MaterialTheme.colorScheme.onSurfaceVariant)
-                Stat("Devices", devices, Icons.Filled.MoreVert, MaterialTheme.colorScheme.onSurfaceVariant)
+                Stat("WiFi", wifi, MaterialTheme.colorScheme.primary)
+                Stat("BT", bt, MaterialTheme.colorScheme.secondary)
+                Stat("BLE", ble, MaterialTheme.colorScheme.tertiary)
+                Stat("Fixes", withFix, MaterialTheme.colorScheme.onSurfaceVariant)
+                Stat("Devices", devices, MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
 }
 
 @Composable
-private fun Stat(label: String, value: Int, icon: ImageVector, tint: androidx.compose.ui.graphics.Color) {
+private fun Stat(label: String, value: Int, tint: androidx.compose.ui.graphics.Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text("$value", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = tint)
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -404,12 +511,12 @@ private fun TopBanner(
     onGoLive: () -> Unit,
     onUpload: () -> Unit,
     onAbout: () -> Unit,
-    onList: () -> Unit,
+    onSettings: () -> Unit,
     onSavedSessions: () -> Unit,
     onExport: () -> Unit,
+    onShare: () -> Unit,
     onStopLive: () -> Unit,
     onForgetLogin: () -> Unit,
-    onMap: () -> Unit,
     liveActive: Boolean,
     showForgetLogin: Boolean,
 ) {
@@ -429,25 +536,12 @@ private fun TopBanner(
                     .background(MaterialTheme.colorScheme.background),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    painterResource(R.drawable.ic_launcher_foreground),
-                    null,
-                    tint = androidx.compose.ui.graphics.Color.Unspecified,
-                )
+                Icon(painterResource(R.drawable.ic_launcher_foreground), null, tint = androidx.compose.ui.graphics.Color.Unspecified)
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(
-                    "THUGS Wardrive",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
-                )
-                Text(
-                    "wardrive.thugs.red",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text("THUGS Wardrive", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
+                Text("wardrive.thugs.red", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton(onClick = onGoLive) {
                 Icon(AppIcons.Podcasts, null, modifier = Modifier.size(18.dp))
@@ -475,23 +569,14 @@ private fun TopBanner(
                     leadingIcon = { Icon(AppIcons.CloudUpload, null) },
                     onClick = { menu = false; onUpload() },
                 )
-                DropdownMenuItem(
-                    text = { Text("Saved sessions…") },
-                    onClick = { menu = false; onSavedSessions() },
-                )
-                DropdownMenuItem(
-                    text = { Text("Export CSV to storage") },
-                    onClick = { menu = false; onExport() },
-                )
+                DropdownMenuItem(text = { Text("Share session CSV…") }, onClick = { menu = false; onShare() })
+                DropdownMenuItem(text = { Text("Saved sessions…") }, onClick = { menu = false; onSavedSessions() })
+                DropdownMenuItem(text = { Text("Export CSV to storage") }, onClick = { menu = false; onExport() })
                 if (showForgetLogin) {
-                    DropdownMenuItem(
-                        text = { Text("Forget saved login") },
-                        onClick = { menu = false; onForgetLogin() },
-                    )
+                    DropdownMenuItem(text = { Text("Forget saved login") }, onClick = { menu = false; onForgetLogin() })
                 }
                 HorizontalDivider()
-                DropdownMenuItem(text = { Text("Live list") }, onClick = { menu = false; onList() })
-                DropdownMenuItem(text = { Text("Map") }, onClick = { menu = false; onMap() })
+                DropdownMenuItem(text = { Text("Settings") }, onClick = { menu = false; onSettings() })
                 DropdownMenuItem(text = { Text("About") }, onClick = { menu = false; onAbout() })
             }
         }
@@ -505,7 +590,7 @@ private fun SavedSessionsDialog(files: List<File>, onDismiss: () -> Unit, onUplo
         title = { Text("Saved sessions") },
         text = {
             if (files.isEmpty()) {
-                Text("No saved sessions yet. Use “Export CSV to storage” or Upload to create one.")
+                Text("No saved sessions yet. Drive a bit, or use “Export CSV to storage”.")
             } else {
                 LazyColumn {
                     items(files, key = { it.name }) { f ->
