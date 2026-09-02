@@ -66,13 +66,13 @@ later):
 | **Export CSV to storage** | Write the current session to app storage without uploading |
 | **Forget saved login** | Wipe the stored token + credentials (shown once you've signed in) |
 | **Live list** | Back to the list |
-| **Map** | The offline map |
+| **Map** | The map — offline plot, optional OSM tiles |
 | **About** | Project info + the optimise-your-phone checklist |
 
 ## Map
 
 Reachable from the menu. Scanned points and the driving path drawn on a local
-projection — **no map tiles are downloaded**, so it works with no signal.
+projection. It works **fully offline** — a lat/long graticule, scale bar and north arrow instead of a basemap. The **Tiles** button turns on OpenStreetMap tiles (needs a connection the first time; tiles are then cached, and it stays off until you ask). No API key.
 
 - **Pinch** to zoom, **drag** to pan.
 - **Double-tap** or the **Fit** button to re-fit the whole session.

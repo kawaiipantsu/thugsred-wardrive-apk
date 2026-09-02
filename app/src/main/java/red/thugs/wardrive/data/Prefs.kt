@@ -43,6 +43,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_REMEMBER, false)
         set(v) = sp.edit().putBoolean(K_REMEMBER, v).apply()
 
+    /** Show OpenStreetMap tiles under the map (uses data). Off by default. */
+    var mapTiles: Boolean
+        get() = sp.getBoolean(K_MAP_TILES, false)
+        set(v) = sp.edit().putBoolean(K_MAP_TILES, v).apply()
+
     var ingestToken: String?
         get() = sp.getString(K_TOKEN, null)?.takeIf { it.isNotBlank() }
         set(v) = sp.edit().apply { if (v.isNullOrBlank()) remove(K_TOKEN) else putString(K_TOKEN, v) }.apply()
@@ -69,6 +74,7 @@ class Prefs(context: Context) {
         const val K_USERNAME = "username"
         const val K_PASSWORD = "password"
         const val K_REMEMBER = "remember_credentials"
+        const val K_MAP_TILES = "map_tiles"
         const val K_TOKEN = "ingest_token"
     }
 }

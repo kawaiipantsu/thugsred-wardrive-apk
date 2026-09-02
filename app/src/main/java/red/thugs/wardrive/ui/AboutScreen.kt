@@ -55,7 +55,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             "What the app does",
             "Scans for WiFi access points and Bluetooth (Classic + BLE) devices while you move, " +
                 "stamping every sighting with a GPS fix. The list shows one row per device; the Map " +
-                "screen plots located points and the driving path (offline, no tiles); the footer counts " +
+                "screen plots located points and the driving path over a lat/long graticule (OpenStreetMap tiles are an opt-in toggle); the footer counts " +
                 "what this run has found.",
         )
         Section(
@@ -111,7 +111,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
                 "• BLE results are delivered in batches so the radio can sleep between them.\n" +
                 "• Wi-Fi leans on the OS's own periodic scans; the active nudge is infrequent and pauses " +
                 "when stationary.\n" +
-                "• The map is drawn locally with no tile downloads.\n" +
+                "• The map is drawn locally; OpenStreetMap tiles are opt-in (the Tiles button) and cached.\n" +
                 "• GPS is polled every ~2 s, not as fast as the chipset allows.",
         )
 

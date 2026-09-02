@@ -71,6 +71,7 @@ data class WardriveUiState(
     val live: LiveStatus = LiveStatus(),
     val track: List<TrackPoint> = emptyList(),
     val current: Pair<Double, Double>? = null,
+    val mapTiles: Boolean = false,
 )
 
 /** Callbacks the chrome fires. Default no-ops keep previews trivial. */
@@ -85,6 +86,7 @@ data class WardriveActions(
     val onStopLive: () -> Unit = {},
     val onForgetLogin: () -> Unit = {},
     val onToggleScan: () -> Unit = {},
+    val onToggleMapTiles: () -> Unit = {},
     val showForgetLogin: Boolean = false,
 )
 
@@ -99,6 +101,7 @@ fun MainScreen(
     var credPurpose by remember { mutableStateOf<CredentialPurpose?>(null) }
     var pendingUploadFile by remember { mutableStateOf<File?>(null) }
     var showSaved by remember { mutableStateOf(false) }
+    var mapTiles by remember { mutableStateOf(vm.prefs.mapTiles) }
 
     val observations by vm.session.observations.collectAsStateWithLifecycle()
     val counts by vm.session.counts.collectAsStateWithLifecycle()
@@ -124,6 +127,7 @@ fun MainScreen(
                 live = live,
                 track = track,
                 current = currentLatLon,
+                mapTiles = mapTiles,
             ),
             actions = WardriveActions(
                 onGoLive = {
@@ -142,6 +146,7 @@ fun MainScreen(
                 onStopLive = { vm.stopLive() },
                 onForgetLogin = { vm.forgetLogin() },
                 onToggleScan = { if (scanning) vm.stopScan() else onRequestScanStart() },
+                onToggleMapTiles = { mapTiles = !mapTiles; vm.prefs.mapTiles = mapTiles },
                 showForgetLogin = vm.prefs.rememberCredentials || vm.hasSavedToken,
             ),
             snackbarHost = { SnackbarHost(snackbar) },
@@ -243,7 +248,13 @@ internal fun WardriveScaffold(
                 Screen.ABOUT -> AboutScreen()
                 Screen.MAP -> Column(Modifier.fillMaxSize()) {
                     LiveStrip(state.live)
-                    MapScreen(points = state.observations, track = state.track, current = state.current)
+                    MapScreen(
+                        points = state.observations,
+                        track = state.track,
+                        current = state.current,
+                        tilesEnabled = state.mapTiles,
+                        onToggleTiles = actions.onToggleMapTiles,
+                    )
                 }
                 Screen.LIST -> Column(Modifier.fillMaxSize()) {
                     LiveStrip(state.live)

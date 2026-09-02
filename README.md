@@ -52,7 +52,7 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 <table>
   <tr>
     <td width="33%"><img src="docs/screenshots/list.png" alt="Live session list"><br/><sub><b>Live list</b> — one row per device, footer counts</sub></td>
-    <td width="33%"><img src="docs/screenshots/map.png" alt="Offline map"><br/><sub><b>Map</b> — points + driving path, no tiles</sub></td>
+    <td width="33%"><img src="docs/screenshots/map.png" alt="Map"><br/><sub><b>Map</b> — points + path, graticule / scale (OSM tiles optional)</sub></td>
     <td width="33%"><img src="docs/screenshots/list_empty.png" alt="Scanning, no results yet"><br/><sub><b>Scanning</b> — waiting for a GPS fix</sub></td>
   </tr>
 </table>
@@ -63,7 +63,7 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 
 - **Scan** WiFi access points + Bluetooth Classic + BLE, each sighting stamped with a GPS fix.
 - **Live list** — one row per device (SSID/name, BSSID, channel, signal, last seen).
-- **Offline map** — scanned points and the driving path on a Compose `Canvas`; pinch/pan/fit, **no tiles downloaded**.
+- **Map** — scanned points + driving path on a Compose `Canvas` (Web Mercator); pinch/pan/fit. Works **fully offline** with a lat/long graticule, scale bar and north arrow; **OpenStreetMap tiles are an opt-in toggle** (no API key, cached, off by default).
 - **Footer counts** — WiFi APs · BT · BLE · GPS fixes · distinct devices, per run.
 - **Go Live** — signs in, mints an ingest token, streams WiFi observations to `POST /api/v1/ingest` in batches with back-off; nothing re-sent once answered.
 - **Upload** — exports the session to WiGLE CSV and posts it to the moderation queue; saved sessions can be uploaded later.
@@ -125,7 +125,7 @@ app/src/main/java/red/thugs/wardrive/
   scan/     WifiScanner, BluetoothScanner, ScanService (foreground + power tuning)
   location/ LocationProvider (isMoving)
   net/      WardriveClient (login/token/ingest/upload), LiveIngestManager
-  ui/       MainScreen, MapScreen, CredentialsDialog, AboutScreen, MainViewModel, AppIcons, theme/
+  ui/       MainScreen, MapScreen + OsmTiles, CredentialsDialog, AboutScreen, MainViewModel, AppIcons, theme/
 ```
 
 ## 🌐 The Wardrive project
