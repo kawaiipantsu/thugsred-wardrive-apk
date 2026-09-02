@@ -42,7 +42,7 @@ fun CredentialsDialog(
             "Sign in to wardrive.thugs.red. The app creates an ingest token and streams WiFi observations live as you drive."
         CredentialPurpose.UPLOAD ->
             "Sign in to wardrive.thugs.red. The current session is exported to WiGLE CSV and sent to the upload queue."
-    }
+    } + "\n\nNeeds a THUGS(red) Wardrive account approved by staff — register on the site, then ask on Discord for approval. Scanning works without one."
 
     AlertDialog(
         onDismissRequest = onDismiss,

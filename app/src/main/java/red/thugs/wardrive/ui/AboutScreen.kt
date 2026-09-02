@@ -28,6 +28,19 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         Text("Version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.bodySmall)
 
         Section(
+            "Account required for Go Live & Upload",
+            "Both Go Live and Upload sign in to wardrive.thugs.red, and that account is not " +
+                "self-serve:\n" +
+                "1. Register at wardrive.thugs.red/register.\n" +
+                "2. New accounts are pending until a THUGS(red) moderator approves them.\n" +
+                "3. Message THUGS(red) staff on Discord that you've registered and want wardrive " +
+                "access, so they can approve you.\n\n" +
+                "Without an approved account this app is scan-only: WiFi + Bluetooth scanning, the " +
+                "list, the map, the counters and local CSV export all work — Go Live and Upload will " +
+                "fail at sign-in.",
+        )
+
+        Section(
             "The Wardrive project",
             "wardrive.thugs.red is a community site for uploading and exploring wardrive dumps — " +
                 "Kismet, ESP32 rigs, Hak5 WiFi Pineapple and similar. It holds a searchable archive of " +

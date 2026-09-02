@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" font-family="DejaVu Sans, Verdana, sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0E14"/>
+      <stop offset="1" stop-color="#141925"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3DDC97"/>
+      <stop offset="1" stop-color="#2FB37E"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="300" fill="url(#bg)"/>
+
+  <!-- faint grid -->
+  <g stroke="#2FB37E" stroke-opacity="0.06">
+    <path d="M0 60 H1200 M0 120 H1200 M0 180 H1200 M0 240 H1200"/>
+    <path d="M120 0 V300 M240 0 V300 M360 0 V300 M480 0 V300 M600 0 V300 M720 0 V300 M840 0 V300 M960 0 V300 M1080 0 V300"/>
+  </g>
+
+  <!-- driving track -->
+  <path d="M-20 250 C 180 210, 260 150, 420 170 S 720 260, 900 150 1240 120 1240 120"
+        fill="none" stroke="url(#accent)" stroke-opacity="0.35" stroke-width="3" stroke-linecap="round"/>
+  <g fill="#3DDC97" fill-opacity="0.5">
+    <circle cx="120" cy="228" r="3"/><circle cx="300" cy="163" r="3"/><circle cx="460" cy="171" r="3"/>
+    <circle cx="640" cy="205" r="3"/><circle cx="820" cy="190" r="3"/><circle cx="980" cy="140" r="3"/>
+  </g>
+
+  <!-- signal + pin mark -->
+  <g transform="translate(120 150)">
+    <path d="M-46 6 a46 46 0 0 1 92 0" fill="none" stroke="#2FB37E" stroke-width="7" stroke-linecap="round"/>
+    <path d="M-30 6 a30 30 0 0 1 60 0" fill="none" stroke="#3DDC97" stroke-width="7" stroke-linecap="round"/>
+    <circle cx="0" cy="4" r="13" fill="#E64B5D"/>
+    <path d="M0 54 L-16 18 L16 18 Z" fill="#E64B5D"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="210" y="132" fill="#E6EAF2" font-size="62" font-weight="bold" letter-spacing="2">THUGS<tspan fill="#3DDC97" dx="26">WARDRIVE</tspan></text>
+  <text x="213" y="176" fill="#9AA4B8" font-size="24" letter-spacing="1">WiFi + Bluetooth wardriving for Android 15+</text>
+  <text x="213" y="212" fill="#5C6b83" font-size="17" font-family="DejaVu Sans Mono, monospace">scan · map offline · go live or upload to wardrive.thugs.red</text>
+</svg>

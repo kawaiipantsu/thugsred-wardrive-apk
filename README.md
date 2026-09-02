@@ -1,87 +1,106 @@
-# THUGS Wardrive (Android)
+<p align="center"><img src="assets/banner.png" alt="THUGS Wardrive" width="100%"></p>
 
-A simple wardriving app for Android 15+. Scans for WiFi access points and
-Bluetooth (Classic + BLE) devices while you move, shows a live list, and syncs to
-[wardrive.thugs.red](https://wardrive.thugs.red) either **live** (streaming) or by
-**uploading** a finished session.
+<div align="center">
 
-## Screens
+# THUGS Wardrive
 
-- **Top banner** — logo, wordmark, and a menu: *Go Live*, *Upload current session*,
-  *Saved sessions…*, *Export CSV to storage*, *Live list*, *Map*, *About*.
-- **List** — one row per device (SSID/name, BSSID, channel, signal, last-seen).
-- **Map** — scanned points and the driving path drawn on a Compose `Canvas` in a
-  local equirectangular projection. Pinch-zoom, drag-pan, double-tap / *Fit* to
-  reset. Fully offline — no map tiles are downloaded.
-- **Footer** — running counts for this session: WiFi APs, BT, BLE, GPS fixes,
-  distinct devices; shows *power-saving* when the cadence has backed off.
-- **Start scan / Stop** — floating button; scanning runs in a foreground service
-  so a drive survives the screen turning off.
+**A simple WiFi + Bluetooth wardriving app for Android 15+ — scan access points and BT/BLE devices as you move, watch them on a live list and an offline map, then stream them to [wardrive.thugs.red](https://wardrive.thugs.red) or upload a finished session.**
 
-## Battery
+<br/>
 
-- Scan results are coalesced; the list/counters recompute at most once a second.
-- A tuning loop in `ScanService` drops WiFi + BLE to a low-power cadence when the
-  car is stationary (`LocationProvider.isMoving()`), restoring it on movement.
-- BLE uses batched delivery (`setReportDelay`) so the radio sleeps between flushes.
-- WiFi relies on the OS's passive scans; the active nudge is infrequent and
-  pauses when stationary.
-- GPS is polled every ~2 s. The map draws locally with no network.
-- A partial wake lock is held only while a session is running (screen-off scans).
+![Android](https://img.shields.io/badge/Android-15%2B%20(API%2035)-0B0E14?style=for-the-badge&logo=android&logoColor=3DDC97)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.0-0B0E14?style=for-the-badge&logo=kotlin&logoColor=3DDC97)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-Material3-0B0E14?style=for-the-badge&logo=jetpackcompose&logoColor=3DDC97)
+![Format](https://img.shields.io/badge/output-WiGLE%20CSV-3DDC97?style=for-the-badge)
+![Build](https://img.shields.io/badge/build-debug%20APK-0B0E14?style=for-the-badge)
 
-See the in-app **About** screen for the "de-clutter & optimise your phone"
-checklist, and **DEPLOY.md** for installing the APK from macOS / Windows / Linux.
+<br/>
 
-## Go Live vs Upload
+<a href="https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk"><img src="https://img.shields.io/badge/⬇%20Download-latest%20APK-3DDC97?style=for-the-badge" alt="Download latest APK"></a>
 
-| | Go Live | Upload |
-|---|---|---|
-| Needs data now | yes | only when you upload |
-| Auth | you enter your wardrive.thugs.red username/password once | same |
-| What the app does | logs in, creates a `wdrv_` ingest token, streams WiFi observations to `POST /api/v1/ingest` in batches | logs in, exports the session to WiGLE CSV, posts it to `/uploads` (moderated) |
-| Bluetooth | not sent (server ingests WiFi only) | written to the CSV tagged `BT`/`BLE`; server skips them |
+<br/>
 
-The password is used once to sign in and is **never written to disk** — only the
-issued token is kept (in `EncryptedSharedPreferences`).
+<samp>foreground-service scanning · offline canvas map · movement-aware battery tuning · live ingest with back-off · password never stored</samp>
 
-## Output format
+</div>
 
-WiGLE CSV (`WigleWifi-1.4`), which `wardrive.thugs.red`'s `WigleCsvParser` reads.
-Files are saved under the app's private storage (`files/sessions/`) and listed in
-*Saved sessions…* so an offline drive can be uploaded later.
+## 📑 Table of Contents
 
-## Building
+- [⚠️ Account required](#️-account-required)
+- [✨ Features](#-features)
+- [📲 Install](#-install)
+- [🕹️ Using it](#️-using-it)
+- [🔋 Battery &amp; phone setup](#-battery--phone-setup)
+- [🛠️ Build from source](#️-build-from-source)
+- [🗂️ Project layout](#️-project-layout)
+- [🌐 The Wardrive project](#-the-wardrive-project)
+- [📄 License](#-license)
 
-Open in Android Studio (Ladybug or newer) and Run, **or** headless:
+## ⚠️ Account required
+
+**Go Live** and **Upload** both sign in to `wardrive.thugs.red`, and that account is **not self-serve**:
+
+1. Register at <https://wardrive.thugs.red/register>.
+2. New accounts land **pending** — a THUGS(red) moderator has to approve yours.
+3. **Tell THUGS(red) staff on Discord** that you've registered and want wardrive access, so they can approve the account.
+
+Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning, the live list, the map, the counters and local CSV export all work — Go Live and Upload fail at sign-in.
+
+## ✨ Features
+
+- **Scan** WiFi access points + Bluetooth Classic + BLE, each sighting stamped with a GPS fix.
+- **Live list** — one row per device (SSID/name, BSSID, channel, signal, last seen).
+- **Offline map** — scanned points and the driving path on a Compose `Canvas`; pinch/pan/fit, **no tiles downloaded**.
+- **Footer counts** — WiFi APs · BT · BLE · GPS fixes · distinct devices, per run.
+- **Go Live** — signs in, mints an ingest token, streams WiFi observations to `POST /api/v1/ingest` in batches with back-off; nothing re-sent once answered.
+- **Upload** — exports the session to WiGLE CSV and posts it to the moderation queue; saved sessions can be uploaded later.
+- **Battery** — 1 Hz coalesced state, movement-aware scan cadence, batched BLE, passive WiFi scans, session-scoped wake lock.
+- The password is used once to sign in and is **never written to disk** — only the issued token is kept (encrypted).
+
+## 📲 Install
+
+Debug build, signed with the standard Android debug key.
+
+```bash
+adb install -r THUGS-Wardrive-v1.0-debug.apk
+```
+
+Or download and tap it on the phone:
+<https://github.com/kawaiipantsu/thugsred-wardrive-apk/releases/latest/download/THUGS-Wardrive-v1.0-debug.apk>
+
+Per-OS walkthroughs (ADB + no-cable, Play Protect, troubleshooting):
+[macOS](docs/Deploy-macOS.md) · [Linux](docs/Deploy-Linux.md) · [Windows](docs/Deploy-Windows.md)
+
+## 🕹️ Using it
+
+Full guide: **[docs/Using-the-App.md](docs/Using-the-App.md)**.
+
+- Grant **Location — all the time**, Nearby WiFi devices, and Nearby devices / Bluetooth.
+- **Start scan** runs a foreground service so a drive survives the screen turning off.
+- Menu (⋮): Go Live · Stop live ingest · Upload current session · Saved sessions… · Export CSV · Live list · Map · About.
+- WiFi *client* capture needs monitor mode and isn't possible on a stock device — Bluetooth devices are the "clients" you collect alongside APs.
+
+## 🔋 Battery & phone setup
+
+Full checklist: **[docs/Optimising-your-phone.md](docs/Optimising-your-phone.md)**.
+
+Short version: power the phone, exempt the app from battery optimisation, set location to high accuracy, enable "WiFi/Bluetooth scanning", stop WiFi auto-connecting, disconnect BT devices, turn off VPN/Private DNS for sync, dark + dim screen, DND on.
+
+The app already coalesces state to 1 Hz, drops WiFi/BLE to a low-power cadence when the car is stationary, batches BLE delivery, and draws the map locally.
+
+## 🛠️ Build from source
 
 ```bash
 export JAVA_HOME=/path/to/jdk17
-export ANDROID_HOME=/path/to/android-sdk      # needs platforms;android-35, build-tools;35.0.0
+export ANDROID_HOME=/path/to/android-sdk   # needs platforms;android-35, build-tools;35.0.0
 ./gradlew assembleDebug
 # -> app/build/outputs/apk/debug/app-debug.apk
 ```
 
-- `namespace` / `applicationId`: `red.thugs.wardrive` (debug build: `red.thugs.wardrive.debug`)
-- `minSdk` / `targetSdk` / `compileSdk`: 35. Lower `minSdk` in `app/build.gradle.kts`
-  (e.g. to 30) to widen device support.
-- Default server URL is `https://wardrive.thugs.red`, overridable in the
-  credentials dialog ("Change server").
+Kotlin · Jetpack Compose (Material3) · AGP 8.7 · minSdk / targetSdk / compileSdk 35 · OkHttp.
+`applicationId` is `red.thugs.wardrive` (`.debug` suffix on debug builds). Lower `minSdk` in `app/build.gradle.kts` to widen device support.
 
-## Permissions
-
-Location (fine + background), `NEARBY_WIFI_DEVICES`, `BLUETOOTH_SCAN` /
-`BLUETOOTH_CONNECT`, `POST_NOTIFICATIONS`, foreground-service (location), internet.
-
-## Known limits
-
-- Android throttles `WifiManager.startScan()`, so results refresh every 20–30 s,
-  not continuously.
-- An observation is only recorded with a fresh GPS fix; the `0,0` no-lock
-  artefact is dropped (the server rejects it too).
-- WiFi *client* detection needs monitor mode and is not possible on a stock
-  device — "clients" in the footer means Bluetooth devices.
-
-## Project layout
+## 🗂️ Project layout
 
 ```
 app/src/main/java/red/thugs/wardrive/
@@ -93,3 +112,14 @@ app/src/main/java/red/thugs/wardrive/
   net/      WardriveClient (login/token/ingest/upload), LiveIngestManager
   ui/       MainScreen, MapScreen, CredentialsDialog, AboutScreen, MainViewModel, AppIcons, theme/
 ```
+
+## 🌐 The Wardrive project
+
+`wardrive.thugs.red` is a community site for uploading and exploring wardrive dumps — Kismet, ESP32 rigs, Hak5 WiFi Pineapple and similar: a searchable archive, a map with markers / clustering / heatmap / driving paths, a live-ingest API with bearer tokens, a moderated upload pipeline, build guides and a forum. This app is a phone-sized front end to the live API and the upload queue.
+
+- API guide: <https://wardrive.thugs.red/guides/api>
+- API reference: <https://wardrive.thugs.red/api>
+
+## 📄 License
+
+MIT — see [LICENSE](LICENSE).
