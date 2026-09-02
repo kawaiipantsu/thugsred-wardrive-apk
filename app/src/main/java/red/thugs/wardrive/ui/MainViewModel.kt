@@ -65,8 +65,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     // -- Go Live ------------------------------------------------------
 
-    fun goLive(username: String, password: String) {
-        prefs.username = username
+    /** True when Go Live can start straight away without asking for a password. */
+    val hasSavedToken: Boolean get() = prefs.ingestToken != null
+
+    /** Start streaming with the cached token, no dialog. Falls back to sign-in on 401. */
+    fun startLiveWithSavedToken() {
+        if (prefs.ingestToken == null) return
+        if (!scanning.value) startScan()
+        appx.liveIngest.start()
+        toast("Live. Observations will stream to the map as you drive.")
+    }
+
+    fun goLive(username: String, password: String, remember: Boolean) {
+        prefs.saveCredentials(username, password, remember)
         viewModelScope.launch {
             _busy.value = Busy.Working("Signing in…")
             try {
@@ -93,11 +104,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         toast("Live ingest stopped.")
     }
 
+    fun forgetLogin() {
+        appx.liveIngest.stop()
+        prefs.forgetLogin()
+        toast("Saved login cleared.")
+    }
+
     // -- Upload -----------------------------------------------------
 
     /** [existing] null means "export the current session and upload that". */
-    fun upload(username: String, password: String, existing: File?) {
-        prefs.username = username
+    fun upload(username: String, password: String, remember: Boolean, existing: File?) {
+        prefs.saveCredentials(username, password, remember)
         viewModelScope.launch {
             _busy.value = Busy.Working("Preparing file…")
             try {

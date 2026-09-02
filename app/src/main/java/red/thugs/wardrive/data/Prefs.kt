@@ -7,9 +7,9 @@ import androidx.security.crypto.MasterKey
 import red.thugs.wardrive.BuildConfig
 
 /**
- * Small encrypted key/value store for the things the app must remember between
- * runs: the server URL, the last username typed, and the issued ingest token.
- * The password is never written to disk.
+ * Small encrypted key/value store (AES-256, Android Keystore-backed) for the
+ * things the app remembers between runs: the server URL, the sign-in
+ * credentials (only when the user opts in), and the issued ingest token.
  */
 class Prefs(context: Context) {
 
@@ -34,13 +34,41 @@ class Prefs(context: Context) {
         get() = sp.getString(K_USERNAME, "") ?: ""
         set(v) = sp.edit().putString(K_USERNAME, v).apply()
 
+    /** Only set when [rememberCredentials] is on. Encrypted at rest, device-local. */
+    var password: String
+        get() = sp.getString(K_PASSWORD, "") ?: ""
+        set(v) = sp.edit().apply { if (v.isEmpty()) remove(K_PASSWORD) else putString(K_PASSWORD, v) }.apply()
+
+    var rememberCredentials: Boolean
+        get() = sp.getBoolean(K_REMEMBER, false)
+        set(v) = sp.edit().putBoolean(K_REMEMBER, v).apply()
+
     var ingestToken: String?
         get() = sp.getString(K_TOKEN, null)?.takeIf { it.isNotBlank() }
         set(v) = sp.edit().apply { if (v.isNullOrBlank()) remove(K_TOKEN) else putString(K_TOKEN, v) }.apply()
 
+    /** Persist or wipe the credentials according to the "remember" choice. */
+    fun saveCredentials(user: String, pass: String, remember: Boolean) {
+        rememberCredentials = remember
+        username = user
+        password = if (remember) pass else ""
+    }
+
+    /** Wipe everything tied to an account so a different user can sign in. */
+    fun forgetLogin() {
+        sp.edit()
+            .remove(K_USERNAME)
+            .remove(K_PASSWORD)
+            .remove(K_REMEMBER)
+            .remove(K_TOKEN)
+            .apply()
+    }
+
     private companion object {
         const val K_BASE_URL = "base_url"
         const val K_USERNAME = "username"
+        const val K_PASSWORD = "password"
+        const val K_REMEMBER = "remember_credentials"
         const val K_TOKEN = "ingest_token"
     }
 }

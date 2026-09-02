@@ -83,7 +83,9 @@ data class WardriveActions(
     val onSavedSessions: () -> Unit = {},
     val onExport: () -> Unit = {},
     val onStopLive: () -> Unit = {},
+    val onForgetLogin: () -> Unit = {},
     val onToggleScan: () -> Unit = {},
+    val showForgetLogin: Boolean = false,
 )
 
 @Composable
@@ -124,7 +126,13 @@ fun MainScreen(
                 current = currentLatLon,
             ),
             actions = WardriveActions(
-                onGoLive = { credPurpose = CredentialPurpose.GO_LIVE },
+                onGoLive = {
+                    when {
+                        live.state != LiveState.OFF -> Unit // already streaming
+                        vm.hasSavedToken -> vm.startLiveWithSavedToken()
+                        else -> credPurpose = CredentialPurpose.GO_LIVE
+                    }
+                },
                 onUpload = { pendingUploadFile = null; credPurpose = CredentialPurpose.UPLOAD },
                 onAbout = { screen = Screen.ABOUT },
                 onList = { screen = Screen.LIST },
@@ -132,7 +140,9 @@ fun MainScreen(
                 onSavedSessions = { showSaved = true },
                 onExport = { vm.exportOnly() },
                 onStopLive = { vm.stopLive() },
+                onForgetLogin = { vm.forgetLogin() },
                 onToggleScan = { if (scanning) vm.stopScan() else onRequestScanStart() },
+                showForgetLogin = vm.prefs.rememberCredentials || vm.hasSavedToken,
             ),
             snackbarHost = { SnackbarHost(snackbar) },
         )
@@ -159,13 +169,15 @@ fun MainScreen(
         CredentialsDialog(
             purpose = purpose,
             initialUsername = vm.prefs.username,
+            initialPassword = vm.prefs.password,
+            initialRemember = vm.prefs.rememberCredentials,
             initialBaseUrl = vm.prefs.baseUrl,
             onDismiss = { credPurpose = null },
-            onSubmit = { user, pass, url ->
+            onSubmit = { user, pass, remember, url ->
                 vm.prefs.baseUrl = url
                 when (purpose) {
-                    CredentialPurpose.GO_LIVE -> vm.goLive(user, pass)
-                    CredentialPurpose.UPLOAD -> vm.upload(user, pass, pendingUploadFile)
+                    CredentialPurpose.GO_LIVE -> vm.goLive(user, pass, remember)
+                    CredentialPurpose.UPLOAD -> vm.upload(user, pass, remember, pendingUploadFile)
                 }
                 credPurpose = null
             },
@@ -203,8 +215,10 @@ internal fun WardriveScaffold(
                 onSavedSessions = actions.onSavedSessions,
                 onExport = actions.onExport,
                 onStopLive = actions.onStopLive,
+                onForgetLogin = actions.onForgetLogin,
                 onMap = actions.onMap,
                 liveActive = state.live.state != LiveState.OFF,
+                showForgetLogin = actions.showForgetLogin,
             )
         },
         bottomBar = {
@@ -383,8 +397,10 @@ private fun TopBanner(
     onSavedSessions: () -> Unit,
     onExport: () -> Unit,
     onStopLive: () -> Unit,
+    onForgetLogin: () -> Unit,
     onMap: () -> Unit,
     liveActive: Boolean,
+    showForgetLogin: Boolean,
 ) {
     var menu by remember { mutableStateOf(false) }
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
@@ -456,6 +472,12 @@ private fun TopBanner(
                     text = { Text("Export CSV to storage") },
                     onClick = { menu = false; onExport() },
                 )
+                if (showForgetLogin) {
+                    DropdownMenuItem(
+                        text = { Text("Forget saved login") },
+                        onClick = { menu = false; onForgetLogin() },
+                    )
+                }
                 HorizontalDivider()
                 DropdownMenuItem(text = { Text("Live list") }, onClick = { menu = false; onList() })
                 DropdownMenuItem(text = { Text("Map") }, onClick = { menu = false; onMap() })

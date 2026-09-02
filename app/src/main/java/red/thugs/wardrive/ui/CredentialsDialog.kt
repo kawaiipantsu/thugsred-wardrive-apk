@@ -1,19 +1,22 @@
 package red.thugs.wardrive.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -24,12 +27,15 @@ import androidx.compose.ui.unit.dp
 fun CredentialsDialog(
     purpose: CredentialPurpose,
     initialUsername: String,
+    initialPassword: String,
+    initialRemember: Boolean,
     initialBaseUrl: String,
     onDismiss: () -> Unit,
-    onSubmit: (username: String, password: String, baseUrl: String) -> Unit,
+    onSubmit: (username: String, password: String, remember: Boolean, baseUrl: String) -> Unit,
 ) {
     var username by rememberSaveable { mutableStateOf(initialUsername) }
-    var password by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf(initialPassword) }
+    var remember by rememberSaveable { mutableStateOf(initialRemember || initialPassword.isNotEmpty()) }
     var baseUrl by rememberSaveable { mutableStateOf(initialBaseUrl) }
     var showAdvanced by rememberSaveable { mutableStateOf(false) }
 
@@ -73,6 +79,16 @@ fun CredentialsDialog(
                     ),
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
                 )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Checkbox(checked = remember, onCheckedChange = { remember = it })
+                    Text("Stay signed in on this device")
+                }
                 TextButton(onClick = { showAdvanced = !showAdvanced }) {
                     Text(if (showAdvanced) "Hide server" else "Change server")
                 }
@@ -89,7 +105,7 @@ fun CredentialsDialog(
         },
         confirmButton = {
             TextButton(
-                onClick = { onSubmit(username.trim(), password, baseUrl.trim()) },
+                onClick = { onSubmit(username.trim(), password, remember, baseUrl.trim()) },
                 enabled = username.isNotBlank() && password.isNotBlank(),
             ) { Text(if (purpose == CredentialPurpose.GO_LIVE) "Go Live" else "Upload") }
         },

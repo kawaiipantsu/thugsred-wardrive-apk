@@ -120,7 +120,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
             "• Android throttles Wi-Fi scans, so results refresh every 20–90 s, not continuously.\n" +
                 "• An observation is only recorded with a fresh GPS fix; the 0,0 no-lock artefact is dropped.\n" +
                 "• Wi-Fi client detection needs monitor mode and is not possible on a stock device.\n" +
-                "• The password is used once to sign in and is never written to disk; only the issued token is kept.",
+                "• The password is kept only if you tick “Stay signed in on this device” — then it is stored encrypted (Android Keystore), device-local, and never leaves the phone except to sign in to your server. “Forget saved login” wipes it. Otherwise only the issued ingest token is kept.",
         )
         Section("Server", BuildConfig.DEFAULT_BASE_URL + "  ·  guide: /guides/api")
     }

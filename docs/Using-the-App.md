@@ -64,6 +64,7 @@ later):
 | **Upload current session** | Sign in, export to WiGLE CSV, post to the queue |
 | **Saved sessions…** | List previously exported CSVs; upload one later |
 | **Export CSV to storage** | Write the current session to app storage without uploading |
+| **Forget saved login** | Wipe the stored token + credentials (shown once you've signed in) |
 | **Live list** | Back to the list |
 | **Map** | The offline map |
 | **About** | Project info + the optimise-your-phone checklist |
@@ -81,8 +82,9 @@ projection — **no map tiles are downloaded**, so it works with no signal.
 ## Go Live
 
 1. Menu → **Go Live** (or the banner button).
-2. Enter your `wardrive.thugs.red` username and password. *Change server* lets
-   you point at a different host.
+2. Enter your `wardrive.thugs.red` username and password. Tick **Stay signed in
+   on this device** to skip this next time. *Change server* points at a different
+   host.
 3. The app signs in, creates an ingest token for this device
    (`THUGS Wardrive app — <model>`), starts scanning if it isn't already, and
    begins streaming WiFi observations to `POST /api/v1/ingest`.
@@ -90,9 +92,12 @@ projection — **no map tiles are downloaded**, so it works with no signal.
    many are still queued. Batches are re-tried with back-off on rate limits;
    nothing is re-sent once the server has answered.
 
-Your password is used once for the sign-in and is **never written to disk** —
-only the issued token is stored (encrypted). Only WiFi is sent; the server does
-not ingest Bluetooth.
+**Staying signed in.** With *Stay signed in* ticked, the app keeps the ingest
+token and, if provided, your username + password — encrypted via the Android
+Keystore, on this device only. After that, **Go Live** starts with one tap and
+**Upload** pre-fills the sign-in. Menu → **Forget saved login** wipes all of it;
+switch accounts the same way. Only WiFi is sent; the server does not ingest
+Bluetooth.
 
 ## Upload (offline drives)
 

@@ -20,7 +20,7 @@
 
 <br/>
 
-<samp>foreground-service scanning · offline canvas map · movement-aware battery tuning · live ingest with back-off · password never stored</samp>
+<samp>foreground-service scanning · offline canvas map · movement-aware battery tuning · live ingest with back-off · optional encrypted credential storage</samp>
 
 </div>
 
@@ -68,7 +68,7 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 - **Go Live** — signs in, mints an ingest token, streams WiFi observations to `POST /api/v1/ingest` in batches with back-off; nothing re-sent once answered.
 - **Upload** — exports the session to WiGLE CSV and posts it to the moderation queue; saved sessions can be uploaded later.
 - **Battery** — 1 Hz coalesced state, movement-aware scan cadence, batched BLE, passive WiFi scans, session-scoped wake lock.
-- The password is used once to sign in and is **never written to disk** — only the issued token is kept (encrypted).
+- **Stay signed in** (opt-in checkbox) stores your username + password encrypted via the Android Keystore, device-local; *Forget saved login* wipes it. Otherwise the password is used once and only the issued ingest token is kept. With a token saved, **Go Live** starts with one tap.
 
 ## 📲 Install
 
