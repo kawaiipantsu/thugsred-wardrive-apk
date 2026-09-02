@@ -13,6 +13,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -88,6 +90,31 @@ fun StatsScreen(
             },
             style = MaterialTheme.typography.labelSmall,
             color = if (radioBands.size == 1) cs.tertiary else cs.onSurfaceVariant,
+        )
+
+        // Live view of what the OS's scan cache actually contains, by band.
+        val rawScan by produceState(initialValue = Triple(0, 0, 0), ctx) {
+            val wm = ctx.applicationContext.getSystemService(android.content.Context.WIFI_SERVICE)
+                as android.net.wifi.WifiManager
+            while (true) {
+                @Suppress("MissingPermission", "DEPRECATION")
+                val res = runCatching { wm.scanResults }.getOrDefault(emptyList())
+                value = Triple(
+                    res.count { it.frequency in 2401..2500 },
+                    res.count { it.frequency in 4901..5899 },
+                    res.count { it.frequency >= 5900 },
+                )
+                kotlinx.coroutines.delay(3000)
+            }
+        }
+        val (rb2, rb5, rb6) = rawScan
+        val fiveMissing = radioBands.contains("5") && rb5 == 0
+        Text(
+            "Last OS scan: ${rb2 + rb5 + rb6} APs  —  ${rb2}×2.4  ${rb5}×5  ${rb6}×6 GHz" +
+                if (fiveMissing) "  ·  the OS is returning no 5 GHz — Wi-Fi power-saving or scan throttling on your ROM" else "",
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.Medium,
+            color = if (fiveMissing) cs.tertiary else cs.onSurfaceVariant,
         )
 
         WifiInfo.bestChannel24(observations)?.let { (ch, n) ->

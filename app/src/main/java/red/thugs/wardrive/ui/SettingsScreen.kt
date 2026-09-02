@@ -87,6 +87,19 @@ fun SettingsScreen(
             color = if (bands == "2.4") MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(vertical = 4.dp),
         )
+        if (bands != "2.4") {
+            Text(
+                "Not seeing 5 GHz on a dual-band phone? It's the ROM, not the app — the OS is only " +
+                    "handing us 2.4 GHz results. On Xiaomi/MIUI: Settings → Wi-Fi → Additional settings → " +
+                    "turn OFF “Wi-Fi power saving mode” / “Wi-Fi assistant”; keep the test AP on a non-DFS " +
+                    "channel (36–48 or 149–165); and set Developer options → “Wi-Fi scan throttling” off. " +
+                    "Stats shows the live per-band count from the OS.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(vertical = 2.dp),
+            )
+        }
+        TextButton(onClick = { runCatching { @Suppress("DEPRECATION") wm.startScan() } }) { Text("Scan now (test)") }
         Text(
             if (throttled) {
                 "Wi-Fi scan throttling: ON — Android limits scans to ~4 per 2 min. " +

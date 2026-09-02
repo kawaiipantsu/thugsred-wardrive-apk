@@ -51,7 +51,12 @@ class WifiScanner(
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            if (intent?.action == WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) ingest()
+            if (intent?.action != WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) return
+            // If a scan explicitly failed, let the next nudge retry sooner.
+            if (intent.getBooleanExtra(WifiManager.EXTRA_RESULTS_UPDATED, true).not()) {
+                lastStartScan = 0L
+            }
+            ingest()
         }
     }
 

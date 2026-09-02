@@ -75,6 +75,23 @@ You don't need to micro-manage these:
 - **GPS every ~2 s**, not as fast as the chipset allows.
 - **Wake lock** is held only while a session is running, for screen-off scanning.
 
+## No 5 GHz networks showing up?
+
+The app applies **no band filter** — it shows everything `getScanResults()` returns.
+If 5 GHz is missing, the OS isn't giving it to us. Check, in order:
+
+1. **Stats** shows your radio's bands and a live per-band count of the last OS
+   scan. `0×5 GHz` there means the OS cache has no 5 GHz — the rest is a phone
+   setting. A 2.4-GHz-only radio (`802.11 b/g/n`, no `a`/`ac`/`ax`) simply can't.
+2. **Xiaomi / MIUI / HyperOS**: Settings → Wi-Fi → Additional settings → turn off
+   **Wi-Fi power saving mode** and **Wi-Fi assistant**. These restrict scanning
+   to the connected band on battery.
+3. **Developer options → Wi-Fi scan throttling → off** (Settings shows the state).
+4. Put the **test AP on a non-DFS channel** (36–48 or 149–165). DFS channels
+   (52–144) take longer to appear and some regions block them.
+5. Make sure the phone's **Wi-Fi region/country** is set (an unset region hides
+   most 5 GHz channels).
+
 ## Realistic expectations
 
 - Plan for the phone to *not* gain charge while scanning even on a good charger —
