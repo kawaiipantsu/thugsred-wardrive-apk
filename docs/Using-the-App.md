@@ -63,7 +63,7 @@ Permissions):
 
 ## Views — the quick-nav strip
 
-Under the header: **List · Map · Stats · Scope**. Tap to switch.
+Under the header: **List · Map · Stats · Scope · Spy**. Tap to switch.
 
 ## Menu (⋮) — actions
 
@@ -76,7 +76,7 @@ Under the header: **List · Map · Stats · Scope**. Tap to switch.
 | **Saved sessions…** | List session CSVs on the device; upload one later |
 | **Export CSV to storage** | Flush the current session file to app storage |
 | **Forget saved login** | Wipe the stored token + credentials (shown once signed in) |
-| **Settings** | Drive mode, tiles, follow-me, keep-screen-on, haptic, units |
+| **Settings** | Drive mode, spy mode, tiles, follow-me, keep-screen-on, haptic, units |
 | **About** | Project info + the optimise-your-phone checklist |
 
 The session CSV is written to disk **as you drive**, so a crash or the OS killing
@@ -114,6 +114,29 @@ no noise floor). Every AP is drawn at its real channel width so 40/80/160 MHz
 overlap and crowding are visible, with a rolling **waterfall** of per-frequency
 AP density under it. Toggle 2.4 / 5 GHz.
 
+## Spy mode
+
+The **Spy** tab (or Settings → **Spy mode**) is a counter-surveillance view: is
+anything *travelling with you* rather than just being passed once?
+
+While it's on, the app keeps Bluetooth/BLE and GPS at full rate and, for every
+MAC/BSSID it sees (Wi-Fi AP, BT or BLE), records where on your route it appeared.
+A device is flagged as **following you** once it has been seen at **3+ separate
+points** at least ~10 m apart, spread over **≥ ~40 m and ≥ ~45 s** of your route,
+and not lost long ago. Each row shows:
+
+- **name / vendor** — the SSID or device name if any, otherwise the IEEE **OUI**
+  vendor (so you can tell a phone from a car kit from a tag);
+- **randomised MAC** flag — many phones and BLE tags rotate their address, so the
+  OUI is meaningless and a rotating address usually *can't* tail you for long. A
+  genuine tail tends to show a real vendor;
+- **first seen / last seen** clock times, **how far back** you last saw it
+  (metres travelled since), how much of your route it's shadowed, and the sighting
+  count.
+
+It's heuristic — a bus you're both on, or a neighbour driving the same road, will
+show up too. Use it as a prompt to look, not a verdict.
+
 ## Drive mode
 
 Settings → **Drive mode**. Removes the idle back-off: GPS is polled as fast as
@@ -133,6 +156,10 @@ plugged in.
 4. The **LIVE** strip shows how many observations the server has accepted and how
    many are still queued. Batches are re-tried with back-off on rate limits;
    nothing is re-sent once the server has answered.
+5. While live, the header button becomes a red **● LIVE** indicator. Tap it (or
+   menu → **Stop live ingest**) to stop streaming. You're asked whether to also
+   **clear the session** — do that if you don't want the same points re-sent
+   should you go live again later; keep it if you still want to upload the CSV.
 
 **Staying signed in.** With *Stay signed in* ticked, the app keeps the ingest
 token and, if provided, your username + password — encrypted via the Android

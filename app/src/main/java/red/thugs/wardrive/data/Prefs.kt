@@ -71,6 +71,11 @@ class Prefs(context: Context) {
         get() = sp.getBoolean(K_DRIVE_MODE, false)
         set(v) = sp.edit().putBoolean(K_DRIVE_MODE, v).apply()
 
+    /** Spy mode: keep Bluetooth/BLE at full rate for follower detection. */
+    var spyMode: Boolean
+        get() = sp.getBoolean(K_SPY_MODE, false)
+        set(v) = sp.edit().putBoolean(K_SPY_MODE, v).apply()
+
     /** "metric" or "imperial" — affects the map scale bar and distances. */
     var units: String
         get() = sp.getString(K_UNITS, "metric") ?: "metric"
@@ -114,6 +119,7 @@ class Prefs(context: Context) {
         const val K_KEEP_SCREEN_ON = "keep_screen_on"
         const val K_HAPTIC = "new_device_haptic"
         const val K_DRIVE_MODE = "drive_mode"
+        const val K_SPY_MODE = "spy_mode"
         const val K_UNITS = "units"
         const val K_ONBOARDED = "onboarded"
         const val K_TOKEN = "ingest_token"

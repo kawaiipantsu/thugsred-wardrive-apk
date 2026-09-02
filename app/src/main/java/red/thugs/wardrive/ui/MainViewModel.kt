@@ -17,10 +17,10 @@ import red.thugs.wardrive.net.WardriveException
 import red.thugs.wardrive.scan.ScanService
 import java.io.File
 
-enum class Screen { LIST, MAP, STATS, SCOPE, ABOUT, SETTINGS }
+enum class Screen { LIST, MAP, STATS, SCOPE, SPY, ABOUT, SETTINGS }
 
-/** The four screens reachable from the quick-nav strip. */
-val QUICK_NAV_SCREENS = listOf(Screen.LIST, Screen.MAP, Screen.STATS, Screen.SCOPE)
+/** The screens reachable from the quick-nav strip. */
+val QUICK_NAV_SCREENS = listOf(Screen.LIST, Screen.MAP, Screen.STATS, Screen.SCOPE, Screen.SPY)
 
 /** Which action the credentials dialog is collecting a login for. */
 enum class CredentialPurpose { GO_LIVE, UPLOAD }
@@ -38,10 +38,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     val scanning get() = appx.scanning
     val powerSaving get() = appx.powerSaving
     val driveMode get() = appx.driveMode
+    val spyMode get() = appx.spyMode
     val liveStatus get() = appx.liveIngest.status
     val track get() = appx.session.track
     val congestion get() = appx.session.congestion
     val growth get() = appx.session.growth
+    val followers get() = appx.session.followers
+    val trackedDevices get() = appx.session.trackedDevices
 
     val currentLatLon = appx.location.location
         .map { it?.let { l -> l.latitude to l.longitude } }
@@ -83,6 +86,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         appx.setDriveMode(on && scanning.value)
         if (scanning.value) ScanService.reconfigure(appx)
         toast(if (on) "Drive mode on — GPS + radios at full rate. Keep it charged." else "Drive mode off.")
+    }
+
+    /** Spy mode: keep BT/BLE + GPS at full rate so follower detection has enough points. */
+    fun setSpyMode(on: Boolean) {
+        prefs.spyMode = on
+        appx.setSpyModeActive(on && scanning.value)
+        if (scanning.value) ScanService.reconfigure(appx)
+        toast(
+            if (on) "Spy mode on — walk/drive a bit and watch the followers list."
+            else "Spy mode off.",
+        )
     }
 
     // -- Go Live ------------------------------------------------------

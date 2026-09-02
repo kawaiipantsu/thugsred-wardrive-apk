@@ -2,6 +2,7 @@ package red.thugs.wardrive.screenshots
 
 import red.thugs.wardrive.data.ChannelLoad
 import red.thugs.wardrive.data.CongestionSample
+import red.thugs.wardrive.data.Follower
 import red.thugs.wardrive.data.GrowthPoint
 import red.thugs.wardrive.data.Observation
 import red.thugs.wardrive.data.RadioKind
@@ -102,6 +103,27 @@ object Fakes {
         doubleArrayOf(
             55.665 + t * 0.02 + 0.004 * sin(t * 10),
             12.545 + t * 0.03 + 0.006 * cos(t * 7),
+        )
+    }
+
+    fun followers(): List<Follower> {
+        val now = 1_756_800_000_000L
+        return listOf(
+            Follower(
+                kind = RadioKind.BT_LE, bssid = "F4:0E:22:1A:9C:07", name = null,
+                firstSeenMs = now - 512_000L, lastSeenMs = now - 4_000L, sightings = 23,
+                spanMeters = 610, lastSeenMetersAgo = 15, waypoints = 9,
+            ),
+            Follower(
+                kind = RadioKind.WIFI_AP, bssid = "3C:15:C2:44:81:2D", name = "moto-g72",
+                firstSeenMs = now - 388_000L, lastSeenMs = now - 21_000L, sightings = 14,
+                spanMeters = 430, lastSeenMetersAgo = 60, waypoints = 6,
+            ),
+            Follower(
+                kind = RadioKind.BT_CLASSIC, bssid = "5E:A1:77:03:BB:41", name = null,
+                firstSeenMs = now - 190_000L, lastSeenMs = now - 47_000L, sightings = 7,
+                spanMeters = 95, lastSeenMetersAgo = 110, waypoints = 4,
+            ),
         )
     }
 

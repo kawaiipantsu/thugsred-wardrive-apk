@@ -132,6 +132,27 @@ class ScreenshotTest {
     }
 
     @Test
+    @Config(qualifiers = "w411dp-h1400dp-420dpi")
+    fun spy() {
+        captureRoboImage("../docs/screenshots/spy.png") {
+            WardriveTheme(darkTheme = true) {
+                WardriveScaffold(
+                    state = WardriveUiState(
+                        screen = Screen.SPY,
+                        observations = obs,
+                        counts = Fakes.counts(obs),
+                        scanning = true,
+                        spyMode = true,
+                        followers = Fakes.followers(),
+                        trackedDevices = 128,
+                    ),
+                    actions = WardriveActions(),
+                )
+            }
+        }
+    }
+
+    @Test
     @Config(qualifiers = "w411dp-h2600dp-420dpi")
     fun about() {
         captureRoboImage("../docs/screenshots/about.png") {

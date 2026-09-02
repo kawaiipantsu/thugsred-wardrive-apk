@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import red.thugs.wardrive.R
 import red.thugs.wardrive.data.CongestionSample
+import red.thugs.wardrive.data.Follower
 import red.thugs.wardrive.data.GrowthPoint
 import red.thugs.wardrive.data.Observation
 import red.thugs.wardrive.data.RadioKind
@@ -80,6 +81,10 @@ data class WardriveUiState(
     val mapTiles: Boolean = false,
     val congestion: List<CongestionSample> = emptyList(),
     val growth: List<GrowthPoint> = emptyList(),
+    val spyMode: Boolean = false,
+    val followers: List<Follower> = emptyList(),
+    val trackedDevices: Int = 0,
+    val imperial: Boolean = false,
 )
 
 /** Callbacks the chrome fires. Default no-ops keep previews trivial. */
@@ -96,6 +101,7 @@ data class WardriveActions(
     val onForgetLogin: () -> Unit = {},
     val onToggleScan: () -> Unit = {},
     val onToggleMapTiles: () -> Unit = {},
+    val onSpyMode: (Boolean) -> Unit = {},
     val showForgetLogin: Boolean = false,
 )
 
@@ -120,12 +126,14 @@ fun MainScreen(
     var mapFollow by remember { mutableStateOf(vm.prefs.mapFollow) }
     var settingsRev by remember { mutableIntStateOf(0) }
     var detail by remember { mutableStateOf<Observation?>(null) }
+    var confirmStopLive by remember { mutableStateOf(false) }
 
     val observations by vm.session.observations.collectAsStateWithLifecycle()
     val counts by vm.session.counts.collectAsStateWithLifecycle()
     val scanning by vm.scanning.collectAsStateWithLifecycle()
     val powerSaving by vm.powerSaving.collectAsStateWithLifecycle()
     val driveMode by vm.driveMode.collectAsStateWithLifecycle()
+    val spyMode by vm.spyMode.collectAsStateWithLifecycle()
     val live by vm.liveStatus.collectAsStateWithLifecycle()
     val busy by vm.busy.collectAsStateWithLifecycle()
     val track by vm.track.collectAsStateWithLifecycle()
@@ -133,6 +141,8 @@ fun MainScreen(
     val currentAccuracy by vm.currentAccuracy.collectAsStateWithLifecycle()
     val congestion by vm.congestion.collectAsStateWithLifecycle()
     val growth by vm.growth.collectAsStateWithLifecycle()
+    val followers by vm.followers.collectAsStateWithLifecycle()
+    val trackedDevices by vm.trackedDevices.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) { vm.events.collect { snackbar.showSnackbar(it) } }
 
@@ -152,6 +162,10 @@ fun MainScreen(
         mapTiles = mapTiles,
         congestion = congestion,
         growth = growth,
+        spyMode = spyMode,
+        followers = followers,
+        trackedDevices = trackedDevices,
+        imperial = vm.prefs.imperial && settingsRev >= 0,
     )
     val actions = WardriveActions(
         onGoLive = {
@@ -168,10 +182,11 @@ fun MainScreen(
         onSavedSessions = { showSaved = true },
         onExport = { vm.exportOnly() },
         onShare = { vm.shareCsv() },
-        onStopLive = { vm.stopLive() },
+        onStopLive = { confirmStopLive = true },
         onForgetLogin = { vm.forgetLogin() },
         onToggleScan = { if (scanning) vm.stopScan() else onRequestScanStart() },
         onToggleMapTiles = { mapTiles = !mapTiles; vm.prefs.mapTiles = mapTiles },
+        onSpyMode = { vm.setSpyMode(it) },
         showForgetLogin = vm.prefs.rememberCredentials || vm.hasSavedToken,
     )
 
@@ -185,6 +200,7 @@ fun MainScreen(
                         mapTiles = vm.prefs.mapTiles
                     },
                     onDriveMode = { vm.setDriveMode(it) },
+                    onSpyMode = { vm.setSpyMode(it) },
                     onOpenAbout = { screen = Screen.ABOUT },
                     onForgetLogin = { vm.forgetLogin() },
                     onResetSession = { vm.resetSession() },
@@ -209,6 +225,16 @@ fun MainScreen(
                         accuracyM = currentAccuracy,
                         follow = mapFollow,
                         onToggleFollow = { mapFollow = !mapFollow; vm.prefs.mapFollow = mapFollow },
+                    )
+                }
+                Screen.SPY -> Column(Modifier.fillMaxSize()) {
+                    LiveStrip(state.live)
+                    SpyScreen(
+                        active = state.spyMode,
+                        trackedDevices = state.trackedDevices,
+                        followers = state.followers,
+                        imperial = state.imperial,
+                        onToggle = actions.onSpyMode,
                     )
                 }
                 else -> DefaultScreenContent(state, actions, s)
@@ -265,6 +291,33 @@ fun MainScreen(
             files = vm.savedSessions(),
             onDismiss = { showSaved = false },
             onUpload = { f -> showSaved = false; pendingUploadFile = f; credPurpose = CredentialPurpose.UPLOAD },
+        )
+    }
+
+    if (confirmStopLive) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmStopLive = false },
+            title = { Text("Stop live ingest") },
+            text = {
+                Text(
+                    "Streaming to wardrive.thugs.red will stop. This session's Wi-Fi is " +
+                        "already on the live map — clear the session too so the same points " +
+                        "aren't sent again if you go live later?",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmStopLive = false
+                    vm.stopLive()
+                    vm.resetSession()
+                }) { Text("Stop & clear") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    confirmStopLive = false
+                    vm.stopLive()
+                }) { Text("Stop, keep session") }
+            },
         )
     }
 }
@@ -335,6 +388,16 @@ internal fun DefaultScreenContent(state: WardriveUiState, actions: WardriveActio
             LiveStrip(state.live)
             ScopeScreen(state.observations, state.congestion)
         }
+        Screen.SPY -> Column(Modifier.fillMaxSize()) {
+            LiveStrip(state.live)
+            SpyScreen(
+                active = state.spyMode,
+                trackedDevices = state.trackedDevices,
+                followers = state.followers,
+                imperial = state.imperial,
+                onToggle = actions.onSpyMode,
+            )
+        }
         Screen.MAP -> Column(Modifier.fillMaxSize()) {
             LiveStrip(state.live)
             MapScreen(
@@ -354,7 +417,10 @@ internal fun DefaultScreenContent(state: WardriveUiState, actions: WardriveActio
 
 @Composable
 private fun QuickNav(current: Screen, onSelect: (Screen) -> Unit) {
-    val labels = mapOf(Screen.LIST to "List", Screen.MAP to "Map", Screen.STATS to "Stats", Screen.SCOPE to "Scope")
+    val labels = mapOf(
+        Screen.LIST to "List", Screen.MAP to "Map", Screen.STATS to "Stats",
+        Screen.SCOPE to "Scope", Screen.SPY to "Spy",
+    )
     Surface(color = MaterialTheme.colorScheme.surface, tonalElevation = 1.dp) {
         Row(Modifier.fillMaxWidth()) {
             QUICK_NAV_SCREENS.forEach { s ->
@@ -569,10 +635,25 @@ private fun TopBanner(
                 Text("THUGS Wardrive", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, letterSpacing = 0.5.sp)
                 Text("wardrive.thugs.red", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            TextButton(onClick = onGoLive) {
-                Icon(AppIcons.Podcasts, null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Go Live")
+            if (liveActive) {
+                TextButton(
+                    onClick = onStopLive,
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Icon(AppIcons.Circle, null, modifier = Modifier.size(10.dp))
+                    Spacer(Modifier.width(5.dp))
+                    Text("LIVE", fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(4.dp))
+                    Icon(AppIcons.Stop, null, modifier = Modifier.size(16.dp))
+                }
+            } else {
+                TextButton(onClick = onGoLive) {
+                    Icon(AppIcons.Podcasts, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text("Go Live")
+                }
             }
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Filled.MoreVert, contentDescription = "Menu")

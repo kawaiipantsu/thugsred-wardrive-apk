@@ -64,16 +64,18 @@ class ScanService : Service() {
         return START_STICKY
     }
 
-    /** Re-read prefs that change scan/GPS behaviour (Drive mode toggled mid-session). */
+    /** Re-read prefs that change scan/GPS behaviour (Drive / Spy mode toggled mid-session). */
     private fun applyConfig() {
         if (!started) return
         val drive = app.prefs.driveMode
-        wifi.setDriveMode(drive)
-        bt.setDriveMode(drive)
-        app.location.setFast(drive)
+        val spy = app.prefs.spyMode
+        // Spy mode keeps the radios at full rate too (BT/BLE especially).
+        wifi.setDriveMode(drive || spy)
+        bt.setDriveMode(drive || spy)
+        app.location.setFast(drive || spy)
         app.setDriveMode(drive)
-        if (drive) {
-            // Cancel any idle back-off immediately.
+        app.setSpyModeActive(spy)
+        if (drive || spy) {
             lastPowerSaving = false
             wifi.setPowerSaving(false)
             bt.setPowerSaving(false)
@@ -94,10 +96,12 @@ class ScanService : Service() {
             .apply { setReferenceCounted(false); acquire() }
 
         val drive = app.prefs.driveMode
-        app.location.start(fast = drive)
-        wifi.setDriveMode(drive)
-        bt.setDriveMode(drive)
+        val spy = app.prefs.spyMode
+        app.location.start(fast = drive || spy)
+        wifi.setDriveMode(drive || spy)
+        bt.setDriveMode(drive || spy)
         app.setDriveMode(drive)
+        app.setSpyModeActive(spy)
         wifi.start()
         bt.start()
         app.setScanning(true)
@@ -110,7 +114,8 @@ class ScanService : Service() {
                     app.driveMode.value -> " · drive"
                     app.powerSaving.value -> " · idle"
                     else -> ""
-                } + if (wifi.highRate) " · fast scan" else ""
+                } + (if (app.spyMode.value) " · spy" else "") +
+                    (if (wifi.highRate) " · fast scan" else "")
                 notify(
                     "WiFi ${c.wifiAp} · BT ${c.btClassic} · BLE ${c.btLe} · $s sightings" +
                         (if (app.location.current() == null) " · no GPS fix" else "") + mode,
@@ -151,6 +156,7 @@ class ScanService : Service() {
         app.setScanning(false)
         app.setPowerSaving(false)
         app.setDriveMode(false)
+        app.setSpyModeActive(false)
         lastPowerSaving = null
         runCatching { wakeLock?.takeIf { it.isHeld }?.release() }
         wakeLock = null

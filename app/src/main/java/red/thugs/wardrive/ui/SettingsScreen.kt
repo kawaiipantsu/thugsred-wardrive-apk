@@ -35,6 +35,7 @@ fun SettingsScreen(
     prefs: Prefs,
     onChanged: () -> Unit,
     onDriveMode: (Boolean) -> Unit,
+    onSpyMode: (Boolean) -> Unit,
     onOpenAbout: () -> Unit,
     onForgetLogin: () -> Unit,
     onResetSession: () -> Unit,
@@ -53,6 +54,13 @@ fun SettingsScreen(
             "Fastest GPS + full-power WiFi/BT scanning, no idle back-off. Best coverage, heavy battery — keep the phone charged.",
             prefs.driveMode,
         ) { onDriveMode(it); onChanged() }
+
+        SectionLabel("Spy mode")
+        ToggleRow(
+            "Spy mode",
+            "Watch for a MAC/BSSID that keeps reappearing along your route — something travelling with you. Holds BT/BLE + GPS at full rate. See the Spy tab for the followers list.",
+            prefs.spyMode,
+        ) { onSpyMode(it); onChanged() }
 
         SectionLabel("Map")
         ToggleRow("Show map tiles (OpenStreetMap)", "Uses data. Off = graticule only.", prefs.mapTiles) {

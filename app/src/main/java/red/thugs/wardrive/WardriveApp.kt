@@ -3,9 +3,11 @@ package red.thugs.wardrive
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import kotlin.concurrent.thread
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import red.thugs.wardrive.data.Oui
 import red.thugs.wardrive.data.Prefs
 import red.thugs.wardrive.data.SessionStore
 import red.thugs.wardrive.location.LocationProvider
@@ -32,6 +34,9 @@ class WardriveApp : Application() {
     private val _driveMode = MutableStateFlow(false)
     val driveMode: StateFlow<Boolean> = _driveMode.asStateFlow()
 
+    private val _spyMode = MutableStateFlow(false)
+    val spyMode: StateFlow<Boolean> = _spyMode.asStateFlow()
+
     fun setScanning(value: Boolean) {
         _scanning.value = value
     }
@@ -44,6 +49,10 @@ class WardriveApp : Application() {
         _driveMode.value = value
     }
 
+    fun setSpyModeActive(value: Boolean) {
+        _spyMode.value = value
+    }
+
     override fun onCreate() {
         super.onCreate()
         instance = this
@@ -51,6 +60,8 @@ class WardriveApp : Application() {
         session = SessionStore(this)
         location = LocationProvider(this)
         liveIngest = LiveIngestManager(prefs, session)
+
+        thread(name = "oui-load", isDaemon = true) { Oui.ensureLoaded(this) }
 
         val nm = getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(

@@ -57,7 +57,10 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
   </tr>
   <tr>
     <td width="33%"><img src="docs/screenshots/scope.png" alt="Scope"><br/><sub><b>Scope</b> — live channel congestion + waterfall</sub></td>
+    <td width="33%"><img src="docs/screenshots/spy.png" alt="Spy mode"><br/><sub><b>Spy</b> — devices that are following you (vendor, first/last seen, metres ago)</sub></td>
     <td width="33%"><img src="docs/screenshots/onboarding.png" alt="First-run onboarding"><br/><sub><b>Onboarding</b> — account + permissions</sub></td>
+  </tr>
+  <tr>
     <td width="33%"><img src="docs/screenshots/list_empty.png" alt="Scanning, no results yet"><br/><sub><b>Scanning</b> — waiting for a GPS fix</sub></td>
     <td width="33%"><a href="docs/screenshots/about.png">About</a> — project + phone-optimise checklist (tall scroll)</td>
   </tr>
@@ -69,18 +72,19 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 
 - **Scan** WiFi access points + Bluetooth Classic + BLE, each sighting stamped with a GPS fix.
 - **First-run onboarding** — a 3-step walkthrough for the account flow and the runtime permissions (re-openable from Settings).
-- **Quick nav** — a `List · Map · Stats · Scope` strip under the header.
+- **Quick nav** — a `List · Map · Stats · Scope · Spy` strip under the header.
 - **List** — one row per device; filter (WiFi/BT/BLE/new), sort (recent/strongest/SSID/channel), text search, tap a row for a detail sheet (all sightings, signal graph, distance, copy BSSID, open on the site).
 - **Map** — points + driving path on a Compose `Canvas` (Web Mercator); pinch/pan/fit, follow-me, GPS accuracy ring. Offline by default (lat/long graticule, scale bar, N arrow); **OpenStreetMap tiles are opt-in** (no API key, cached, darkened to match).
 - **Stats** — APs per 2.4/5 GHz channel, band split, encryption breakdown, signal histogram, discovery-rate sparkline, least-busy channel.
 - **Scope** — a live *channel-congestion* view (beacon-derived, not RF noise): every AP drawn at its real channel width so overlap is visible, plus a rolling waterfall of per-frequency density.
+- **Spy mode** — a counter-surveillance view: every MAC/BSSID is checked against your route, and anything seen again at several points spread ~10 m+ apart (after you've moved on) is listed as *following you* — with vendor (IEEE OUI), randomised-MAC flag, first/last seen, how far back you last saw it, and how much of your route it's shadowed. Holds BT/BLE + GPS at full rate while on.
 - **Crash-safe logging** — the session CSV is written to disk as you drive, so a kill or crash mid-run doesn't lose it.
-- **Go Live** — signs in, mints an ingest token, streams WiFi observations to `POST /api/v1/ingest` in batches with back-off; nothing re-sent once answered.
+- **Go Live** — signs in, mints an ingest token, streams WiFi observations to `POST /api/v1/ingest` in batches with back-off; nothing re-sent once answered. The header button turns into a red **● LIVE** indicator you tap to stop, with the option to clear the streamed session so the same points aren't sent again.
 - **Upload / Share** — WiGLE CSV to the moderation queue, or straight to the Android share sheet; saved sessions upload later.
 - **Battery** — 1 Hz coalesced state, movement-aware scan cadence, batched BLE, passive WiFi scans, session-scoped wake lock.
 - **Stay signed in** (opt-in) stores username + password encrypted via the Android Keystore, device-local; *Forget saved login* wipes it. With a token saved, **Go Live** starts with one tap.
 - **Drive mode** (Settings) — removes the idle back-off: fastest GPS + full-power WiFi/BT scanning, moving or not. Best coverage, heaviest battery.
-- **Settings** — drive mode, tiles, follow-me, keep-screen-on (Map), new-device haptic, units.
+- **Settings** — drive mode, spy mode, tiles, follow-me, keep-screen-on (Map), new-device haptic, units.
 
 ## 📲 Install
 
@@ -102,7 +106,7 @@ Full guide: **[docs/Using-the-App.md](docs/Using-the-App.md)**.
 
 - Grant **Location — all the time**, Nearby WiFi devices, and Nearby devices / Bluetooth.
 - **Start scan** runs a foreground service so a drive survives the screen turning off.
-- Switch views with the `List · Map · Stats · Scope` strip; the ⋮ menu holds the actions (Go Live, Upload, Share CSV, Saved sessions, Settings, About).
+- Switch views with the `List · Map · Stats · Scope · Spy` strip; the ⋮ menu holds the actions (Go Live, Upload, Share CSV, Saved sessions, Settings, About).
 - WiFi *client* capture needs monitor mode and isn't possible on a stock device — Bluetooth devices are the "clients" you collect alongside APs.
 
 ## 🔋 Battery & phone setup
@@ -134,12 +138,12 @@ app/src/main/java/red/thugs/wardrive/
   WardriveApp.kt            process-wide singletons
   MainActivity.kt           permissions + Compose host
   data/     Observation, SessionStore (coalesced + track + crash-safe CSV + congestion/growth
-            history), WigleCsvWriter, WifiInfo, Prefs, Geo
+            history + follower tracking), Oui (IEEE vendor lookup), WigleCsvWriter, WifiInfo, Prefs, Geo
   scan/     WifiScanner, BluetoothScanner, ScanService (foreground + power tuning + haptic)
   location/ LocationProvider (isMoving)
   net/      WardriveClient (login/token/ingest/upload), LiveIngestManager
   ui/       MainScreen (WardriveScaffold + quick-nav), OnboardingScreen, MapScreen + OsmTiles, StatsScreen,
-            ScopeScreen, ListView, ObservationDetailSheet, SettingsScreen, CredentialsDialog,
+            ScopeScreen, SpyScreen, ListView, ObservationDetailSheet, SettingsScreen, CredentialsDialog,
             AboutScreen, MainViewModel, AppIcons, theme/
 ```
 

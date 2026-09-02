@@ -40,6 +40,24 @@ data class CongestionSample(val tMs: Long, val load: Map<Int, ChannelLoad>)
 /** A 1 Hz point on the "devices found so far" curve: [0]=epochMs, [1]=count. */
 typealias GrowthPoint = LongArray
 
+/** A device that has stayed with you across several separated points on your route. */
+data class Follower(
+    val kind: RadioKind,
+    val bssid: String,
+    val name: String?,
+    val firstSeenMs: Long,
+    val lastSeenMs: Long,
+    val sightings: Int,
+    /** Metres of your route travelled between first and last sighting of this device. */
+    val spanMeters: Int,
+    /** Metres you've moved since you last saw it. */
+    val lastSeenMetersAgo: Int,
+    /** Distinct ~10 m-separated points where it was seen. */
+    val waypoints: Int,
+) {
+    val score: Double get() = waypoints * 2.0 + spanMeters / 60.0 - lastSeenMetersAgo / 40.0
+}
+
 /**
  * Everything found in the current run.
  *
@@ -86,6 +104,14 @@ class SessionStore(private val appContext: Context) {
     /** Rolling history of distinct-device count over time, for the Stats sparkline. */
     val growth: StateFlow<List<GrowthPoint>> = _growth.asStateFlow()
 
+    private val _followers = MutableStateFlow<List<Follower>>(emptyList())
+    /** Devices that look like they're travelling with you — for Spy mode. */
+    val followers: StateFlow<List<Follower>> = _followers.asStateFlow()
+
+    private val _trackedDevices = MutableStateFlow(0)
+    /** Distinct devices seen at ≥1 fix this session (the pool Spy mode watches). */
+    val trackedDevices: StateFlow<Int> = _trackedDevices.asStateFlow()
+
     @Volatile
     var startedAtMs: Long = System.currentTimeMillis()
         private set
@@ -97,6 +123,21 @@ class SessionStore(private val appContext: Context) {
 
     private val congestionHistory = ArrayDeque<CongestionSample>()
     private val growthHistory = ArrayDeque<GrowthPoint>()
+
+    // Follower tracking
+    private var pathMeters = 0.0
+    private class DevTrack(
+        val kind: RadioKind,
+        val firstMs: Long,
+        var lastMs: Long,
+        var count: Int,
+        val firstPath: Double,
+        var lastPath: Double,
+        var lastWaypointPath: Double,
+        var waypoints: Int,
+        var name: String?,
+    )
+    private val devTracks = HashMap<String, DevTrack>()
 
     init {
         scope.launch {
@@ -113,7 +154,10 @@ class SessionStore(private val appContext: Context) {
         synchronized(lock) {
             allSightings.add(o)
             latest[key(o)] = o
-            if (o.hasFix) appendTrackLocked(o.lat, o.lon)
+            if (o.hasFix) {
+                appendTrackLocked(o.lat, o.lon)
+                trackDeviceLocked(o)
+            }
         }
         if (o.isWifi && o.hasFix) {
             synchronized(liveBuffer) { liveBuffer.addLast(o) }
@@ -121,11 +165,28 @@ class SessionStore(private val appContext: Context) {
         dirty.set(true)
     }
 
+    private fun trackDeviceLocked(o: Observation) {
+        val k = key(o)
+        val t = devTracks.getOrPut(k) {
+            DevTrack(o.kind, o.timestampMs, o.timestampMs, 0, pathMeters, pathMeters, pathMeters, 0, o.ssid)
+        }
+        t.lastMs = o.timestampMs
+        t.count++
+        t.lastPath = pathMeters
+        if (o.ssid != null && t.name == null) t.name = o.ssid
+        if (pathMeters - t.lastWaypointPath >= FOLLOW_WAYPOINT_M) {
+            t.lastWaypointPath = pathMeters
+            t.waypoints++
+        }
+    }
+
     fun addAll(list: List<Observation>) = list.forEach(::add)
 
     private fun appendTrackLocked(lat: Double, lon: Double) {
-        if (!lastTrackLat.isNaN() && haversineMeters(lastTrackLat, lastTrackLon, lat, lon) < TRACK_MIN_MOVE_M) {
-            return
+        if (!lastTrackLat.isNaN()) {
+            val d = haversineMeters(lastTrackLat, lastTrackLon, lat, lon)
+            if (d < TRACK_MIN_MOVE_M) return
+            pathMeters += d
         }
         lastTrackLat = lat
         lastTrackLon = lon
@@ -159,6 +220,35 @@ class SessionStore(private val appContext: Context) {
 
         appendToDisk(newForDisk)
         pushHistory(rows)
+        computeFollowers()
+    }
+
+    private fun computeFollowers() {
+        val here: Double
+        val followers = ArrayList<Follower>()
+        synchronized(lock) {
+            here = pathMeters
+            _trackedDevices.value = devTracks.size
+            for ((k, t) in devTracks) {
+                val span = t.lastPath - t.firstPath
+                if (t.waypoints < FOLLOW_MIN_WAYPOINTS) continue
+                if (span < FOLLOW_MIN_SPAN_M) continue
+                if (t.lastMs - t.firstMs < FOLLOW_MIN_MS) continue
+                if (here - t.lastPath > FOLLOW_STALE_M) continue // lost them a while ago
+                followers += Follower(
+                    kind = t.kind,
+                    bssid = k.substringAfter('|'),
+                    name = t.name,
+                    firstSeenMs = t.firstMs,
+                    lastSeenMs = t.lastMs,
+                    sightings = t.count,
+                    spanMeters = span.toInt(),
+                    lastSeenMetersAgo = (here - t.lastPath).toInt(),
+                    waypoints = t.waypoints,
+                )
+            }
+        }
+        _followers.value = followers.sortedByDescending { it.score }
     }
 
     private fun appendToDisk(newSightings: List<Observation>) {
@@ -209,6 +299,8 @@ class SessionStore(private val appContext: Context) {
             latest.clear()
             allSightings.clear()
             trackList.clear()
+            devTracks.clear()
+            pathMeters = 0.0
             lastTrackLat = Double.NaN
             lastTrackLon = Double.NaN
             flushedCount = 0
@@ -222,6 +314,8 @@ class SessionStore(private val appContext: Context) {
         growthHistory.clear()
         _congestion.value = emptyList()
         _growth.value = emptyList()
+        _followers.value = emptyList()
+        _trackedDevices.value = 0
         recompute()
     }
 
@@ -288,5 +382,12 @@ class SessionStore(private val appContext: Context) {
         const val FLUSH_MS = 1_000L
         const val TRACK_MIN_MOVE_M = 5.0
         const val MAX_HISTORY = 240 // ~4 minutes at 1 Hz
+
+        // Follower thresholds
+        const val FOLLOW_WAYPOINT_M = 10.0    // distance that separates two "waypoints"
+        const val FOLLOW_MIN_WAYPOINTS = 3    // seen at this many separated points
+        const val FOLLOW_MIN_SPAN_M = 40.0    // over at least this much of your route
+        const val FOLLOW_MIN_MS = 45_000L     // and this long
+        const val FOLLOW_STALE_M = 120.0      // drop once you've moved this far past the last sighting
     }
 }
