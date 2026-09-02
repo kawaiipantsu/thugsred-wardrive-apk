@@ -77,7 +77,8 @@ Without an approved account the app is **scan-only**: WiFi + Bluetooth scanning,
 - **Upload / Share** — WiGLE CSV to the moderation queue, or straight to the Android share sheet; saved sessions upload later.
 - **Battery** — 1 Hz coalesced state, movement-aware scan cadence, batched BLE, passive WiFi scans, session-scoped wake lock.
 - **Stay signed in** (opt-in) stores username + password encrypted via the Android Keystore, device-local; *Forget saved login* wipes it. With a token saved, **Go Live** starts with one tap.
-- **Settings** — tiles, follow-me, keep-screen-on (Map), new-device haptic, units.
+- **Drive mode** (Settings) — removes the idle back-off: fastest GPS + full-power WiFi/BT scanning, moving or not. Best coverage, heaviest battery.
+- **Settings** — drive mode, tiles, follow-me, keep-screen-on (Map), new-device haptic, units.
 
 ## 📲 Install
 

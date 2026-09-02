@@ -13,6 +13,8 @@ not to fight.
       Wardrive → Battery → **Unrestricted** / "Don't optimise". Otherwise the OS
       throttles or kills the foreground service.
 - [ ] Turn **Adaptive Battery** off for the drive (Settings → Battery).
+- [ ] For the most complete take, turn on **Drive mode** in the app's Settings —
+      fastest GPS + full-power scanning, no idle back-off. Only with a charger.
 
 ### Location
 - [ ] **Location on, high accuracy.** Settings → Location → on. Settings →
